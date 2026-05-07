@@ -1,13 +1,15 @@
 import express from 'express';
-import { getResources, uploadResource } from '../controllers/resourceController.js';
-import { protect } from '../middlewares/authMiddleware.js';
+import { getResources, uploadResource, deleteResource } from '../controllers/resourceController.js';
 import upload from '../middlewares/uploadMiddleware.js';
 
 const router = express.Router();
 
 router.route('/resources')
-  .get(protect, getResources)
-  .post(protect, upload.single('file'), uploadResource);
+  .get(getResources)
+  .post(upload.single('file'), uploadResource);
+
+router.route('/resources/:id')
+  .delete(deleteResource);
 
 // Basic health check route
 router.get('/health', (req, res) => {

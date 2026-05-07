@@ -1,41 +1,71 @@
 import React from 'react';
-import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, Settings, LogOut } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { LayoutDashboard, BookOpen, Info, X } from 'lucide-react';
 
-export default function Sidebar() {
-  const { signOut, user } = useAuth();
+export default function Sidebar({ isOpen, setIsOpen }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isHome = location.pathname === '/';
+  const isAbout = location.pathname === '/about';
+
+  const handleNav = (path) => {
+    navigate(path);
+    setIsOpen(false); // Close sidebar on mobile after navigation
+  };
 
   return (
-    <aside className="w-64 bg-[#0a0f18] h-screen border-r border-white/5 flex flex-col hidden md:flex fixed top-0 left-0 bottom-0">
-      <div className="p-6 border-b border-white/5 flex items-center gap-4">
-        <div className="w-10 h-10 rounded-lg bg-surface flex items-center justify-center overflow-hidden border border-white/10">
-          <img src={`https://ui-avatars.com/api/?name=${user?.email || 'Student'}&background=7c7cff&color=fff`} alt="Profile" className="w-full h-full object-cover" />
+    <aside className={`w-64 bg-[#0a0f18] h-screen border-r border-white/5 flex flex-col fixed top-0 left-0 bottom-0 z-40 transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+      <div className="p-6 border-b border-white/5 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/30 flex-shrink-0">
+            <span className="text-primary font-bold text-lg">E</span>
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-white">EduCrate</h3>
+            <p className="text-xs text-textMuted">CS Department</p>
+          </div>
         </div>
-        <div>
-          <h3 className="text-sm font-medium text-white">Student Portal</h3>
-          <p className="text-xs text-textMuted">CS Department</p>
-        </div>
+        <button className="md:hidden text-textMuted hover:text-white" onClick={() => setIsOpen(false)}>
+          <X size={20} />
+        </button>
       </div>
 
-      <div className="flex-1 py-6 px-4 space-y-2">
-        <a href="#" className="flex items-center gap-3 px-4 py-3 bg-[#171c2c] text-primary border-l-2 border-primary rounded-r-lg font-medium">
+      <div className="flex-1 py-6 px-4 space-y-2 overflow-y-auto">
+        <button
+          onClick={() => handleNav('/')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${
+            isHome
+              ? 'bg-[#171c2c] text-primary border-l-2 border-primary rounded-r-lg'
+              : 'text-textMuted hover:bg-white/5'
+          }`}
+        >
           <LayoutDashboard size={20} />
           Dashboard
-        </a>
-        <a href="#" className="flex items-center gap-3 px-4 py-3 text-textMuted hover:bg-white/5 rounded-lg transition-colors">
-          <Settings size={20} />
-          Settings
-        </a>
+        </button>
+        <button
+          className="w-full flex items-center gap-3 px-4 py-3 text-textMuted hover:bg-white/5 rounded-lg transition-colors"
+          onClick={() => handleNav('/')}
+        >
+          <BookOpen size={20} />
+          Library
+        </button>
+        <button
+          onClick={() => handleNav('/about')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${
+            isAbout
+              ? 'bg-[#171c2c] text-primary border-l-2 border-primary rounded-r-lg'
+              : 'text-textMuted hover:bg-white/5'
+          }`}
+        >
+          <Info size={20} />
+          About
+        </button>
       </div>
 
       <div className="p-6 border-t border-white/5">
-        <button 
-          onClick={signOut}
-          className="flex items-center gap-3 text-textMuted hover:text-white transition-colors w-full"
-        >
-          <LogOut size={20} />
-          Logout
-        </button>
+        <p className="text-xs text-textMuted text-center leading-relaxed">
+          Open-access CS resource hub.<br />Upload freely. Learn together.
+        </p>
       </div>
     </aside>
   );
