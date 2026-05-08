@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import PDFPreviewModal from '../components/PDFPreviewModal';
@@ -24,27 +24,27 @@ import { getSubjectsForSemester } from '../lib/semesterData';
 
 // ── Tab constants ──────────────────────────────────────────────────────────────
 const TAB_NOTES = 'notes';
-const TAB_PYQS  = 'pyq';
+const TAB_PYQS = 'pyq';
 
 export default function Semester() {
-  const { id }    = useParams();           // e.g. 'S4'
-  const navigate  = useNavigate();
+  const { id } = useParams();           // e.g. 'S4'
+  const navigate = useNavigate();
 
   const semesterNumber = id ? id.replace('S', '') : '';
-  const subjects       = getSubjectsForSemester(id);
-  const hasSubjects    = subjects.length > 0;
+  const subjects = getSubjectsForSemester(id);
+  const hasSubjects = subjects.length > 0;
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab]             = useState(TAB_NOTES);
-  const [notes, setNotes]                     = useState({});   // { [subject]: Resource[] }
-  const [pyqs, setPyqs]                       = useState([]);   // Resource[]
-  const [loadingNotes, setLoadingNotes]       = useState(false);
-  const [loadingPyqs, setLoadingPyqs]         = useState(false);
-  const [openFolders, setOpenFolders]         = useState({});   // { [subject]: bool }
-  const [loadingFolder, setLoadingFolder]     = useState({});   // { [subject]: bool }
+  const [activeTab, setActiveTab] = useState(TAB_NOTES);
+  const [notes, setNotes] = useState({});   // { [subject]: Resource[] }
+  const [pyqs, setPyqs] = useState([]);   // Resource[]
+  const [loadingNotes, setLoadingNotes] = useState(false);
+  const [loadingPyqs, setLoadingPyqs] = useState(false);
+  const [openFolders, setOpenFolders] = useState({});   // { [subject]: bool }
+  const [loadingFolder, setLoadingFolder] = useState({});   // { [subject]: bool }
   const [previewResource, setPreviewResource] = useState(null);
-  const [deletingId, setDeletingId]           = useState(null);
-  const [uploadModal, setUploadModal]         = useState({
+  const [deletingId, setDeletingId] = useState(null);
+  const [uploadModal, setUploadModal] = useState({
     isOpen: false,
     type: TAB_NOTES,
   });
@@ -191,9 +191,9 @@ export default function Semester() {
 
   /** Subject folder card */
   const SubjectFolder = ({ subject }) => {
-    const isOpen     = !!openFolders[subject];
-    const items      = notes[subject] ?? [];
-    const count      = items.length;
+    const isOpen = !!openFolders[subject];
+    const items = notes[subject] ?? [];
+    const count = items.length;
 
     return (
       <div className="border border-white/8 rounded-xl overflow-hidden transition-all">
@@ -204,18 +204,17 @@ export default function Semester() {
         >
           {isOpen
             ? <FolderOpen size={20} className="text-primary flex-shrink-0" />
-            : <Folder    size={20} className="text-textMuted flex-shrink-0" />
+            : <Folder size={20} className="text-textMuted flex-shrink-0" />
           }
           <span className="flex-1 font-medium text-white text-sm truncate">{subject}</span>
-          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full mr-2 flex-shrink-0 ${
-            count > 0
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full mr-2 flex-shrink-0 ${count > 0
               ? 'bg-primary/15 text-primary'
               : 'bg-white/5 text-textMuted'
-          }`}>
+            }`}>
             {count} file{count !== 1 ? 's' : ''}
           </span>
           {isOpen
-            ? <ChevronDown  size={16} className="text-textMuted flex-shrink-0" />
+            ? <ChevronDown size={16} className="text-textMuted flex-shrink-0" />
             : <ChevronRight size={16} className="text-textMuted flex-shrink-0" />
           }
         </button>
@@ -279,17 +278,16 @@ export default function Semester() {
       {/* ── Tabs ── */}
       <div className="flex items-center border-b border-white/8 mb-6 gap-1">
         {[
-          { key: TAB_NOTES, label: 'Notes',    Icon: BookOpen },
-          { key: TAB_PYQS,  label: 'PYQs',     Icon: FileQuestion },
+          { key: TAB_NOTES, label: 'Notes', Icon: BookOpen },
+          { key: TAB_PYQS, label: 'PYQs', Icon: FileQuestion },
         ].map(({ key, label, Icon }) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-all -mb-px ${
-              activeTab === key
+            className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-all -mb-px ${activeTab === key
                 ? 'border-primary text-primary'
                 : 'border-transparent text-textMuted hover:text-gray-300 hover:border-white/20'
-            }`}
+              }`}
           >
             <Icon size={16} />
             {label}
