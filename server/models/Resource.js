@@ -18,6 +18,11 @@ const resourceSchema = mongoose.Schema(
       type: String,
       required: true,
     },
+    type: {
+      type: String,
+      enum: ['notes', 'pyq'],
+      default: 'notes',
+    },
     fileUrl: {
       type: String,
       required: true,
