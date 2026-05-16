@@ -167,8 +167,9 @@ export default function Semester() {
           <Eye size={15} />
         </button>
         <a
-          href={item.fileUrl}
-          download
+          href={`/api/proxy?url=${encodeURIComponent(item.fileUrl)}&dl=1&name=${encodeURIComponent(item.title || 'document')}.pdf`}
+          target="_blank"
+          rel="noopener noreferrer"
           className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
           title="Download"
         >
@@ -439,8 +440,9 @@ function PyqCard({ item, onPreview, onDelete, deletingId }) {
           <Eye size={15} />
         </button>
         <a
-          href={item.fileUrl}
-          download
+          href={`/api/proxy?url=${encodeURIComponent(item.fileUrl)}&dl=1&name=${encodeURIComponent(item.title || 'document')}.pdf`}
+          target="_blank"
+          rel="noopener noreferrer"
           className="p-2 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors"
           title="Download"
         >
@@ -494,7 +496,7 @@ function FlatNotesList({ items, onPreview, onDelete, deletingId, onUpload }) {
           </div>
           <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
             <button onClick={() => onPreview(item)} className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors" title="Preview"><Eye size={15} /></button>
-            <a href={item.fileUrl} download className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors" title="Download"><Download size={15} /></a>
+            <a href={`/api/proxy?url=${encodeURIComponent(item.fileUrl)}&dl=1&name=${encodeURIComponent(item.title || 'document')}.pdf`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors" title="Download"><Download size={15} /></a>
             <button onClick={() => onDelete(item)} disabled={deletingId === item._id} className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50" title="Delete">
               {deletingId === item._id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
             </button>

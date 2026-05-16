@@ -3,46 +3,52 @@ import mongoose from 'mongoose';
 const resourceSchema = mongoose.Schema(
   {
     title: {
-      type: String,
+      type:     String,
       required: true,
     },
     description: {
-      type: String,
+      type:     String,
       required: true,
     },
     semester: {
-      type: String,
+      type:     String,
       required: true,
     },
     subject: {
-      type: String,
+      type:     String,
       required: true,
     },
     type: {
-      type: String,
-      enum: ['notes', 'pyq'],
+      type:    String,
+      enum:    ['notes', 'pyq'],
       default: 'notes',
     },
+    // Public HTTPS URL returned by Cloudinary (secure_url)
     fileUrl: {
-      type: String,
+      type:     String,
       required: true,
     },
-    fileType: {
+    // Cloudinary public_id — stored to enable clean asset deletion
+    cloudinaryPublicId: {
       type: String,
+    },
+    fileType: {
+      type:     String,
       required: true,
-      enum: ['pdf'], // strict to PDF based on requirements
+      enum:     ['pdf'],
     },
     fileSize: {
       type: String,
     },
+    // 'anonymous' for public uploads; extend later if auth is added
     uploadedBy: {
-      type: String, // Storing Supabase User ID or Email
+      type:     String,
       required: true,
     },
     isPinned: {
-      type: Boolean,
+      type:    Boolean,
       default: false,
-    }
+    },
   },
   {
     timestamps: true,

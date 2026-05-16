@@ -1,41 +1,24 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import React, { createContext, useContext } from 'react';
 
-const AuthContext = createContext({});
+/**
+ * AuthContext
+ *
+ * EduCrate is a fully public platform — no authentication is required.
+ * This context is kept as a stub so that any component using `useAuth()`
+ * does not crash. It always returns a null user (anonymous).
+ *
+ * Re-add auth providers here if authentication is introduced in the future.
+ */
+const AuthContext = createContext({
+  user:    null,
+  session: null,
+  signOut: () => Promise.resolve(),
+});
 
-export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
+export const AuthProvider = ({ children }) => (
+  <AuthContext.Provider value={{ user: null, session: null, signOut: () => Promise.resolve() }}>
+    {children}
+  </AuthContext.Provider>
+);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const value = {
-    session,
-    user,
-    signOut: () => supabase.auth.signOut(),
-  };
-
-  return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
-    </AuthContext.Provider>
-  );
-};
-
-export const useAuth = () => {
-  return useContext(AuthContext);
-};
+export const useAuth = () => useContext(AuthContext);

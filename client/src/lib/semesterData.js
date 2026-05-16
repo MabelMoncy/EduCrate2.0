@@ -10,6 +10,40 @@
  */
 
 export const SEMESTER_SUBJECTS = {
+  S1: [
+    'Mathematics for Information Science-1',
+    'Physics for Information Science',
+    'Chemistry for Information Science',
+    'Engineering Graphics and Computer Aided Drawing',
+    'Introduction to Electrical & Electronics Engineering',
+    'Algorithmic Thinking with Python',
+    'Health and Wellness',
+    'Life Skills and Professional Communication',
+    'Skill Enhancement Course: Digital 101 (NASSCOM)',
+    'Basic Electrical and Electronics Engineering Workshop',
+  ],
+  S2: [
+    'Mathematics for Information Science-2',
+    'Physics for Information Science',
+    'Chemistry for Information Science',
+    'Foundations of Computing',
+    'Programming in C',
+    'Discrete Mathematics',
+    'Engineering Entrepreneurship & IPR',
+    'Health and Wellness',
+    'Life Skills and Professional Communication',
+    'Skill Enhancement Course: Digital 101 (NASSCOM)',
+    'IT Workshop',
+  ],
+  S3: [
+    'Mathematics for Information Science-3',
+    'Theory of Computation',
+    'Data Structures and Algorithms',
+    'Object Oriented Programming',
+    'Digital Electronics & Logic Design',
+    'Economics for Engineers',
+    'Engineering Ethics and Sustainable Development',
+  ],
   S4: [
     'Computer Organization and Architecture',
     'Operating Systems',
@@ -20,7 +54,7 @@ export const SEMESTER_SUBJECTS = {
     'Operating Systems Lab',
     'DBMS Lab',
   ],
-  // S1: [], S2: [], S3: [], S5: [], S6: [], S7: [], S8: []
+  // S5: [], S6: [], S7: [], S8: []
   // Populate above when ready, following the same pattern as S4.
 };
 

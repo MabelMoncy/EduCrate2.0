@@ -1,40 +1,16 @@
-import supabase from '../config/supabase.js';
+/**
+ * authMiddleware.js
+ *
+ * Authentication is not enforced on this public platform.
+ * This file is kept as a stub in case auth is added in the future.
+ *
+ * To protect a route, import `protect` and add it as middleware:
+ *   router.post('/resource', protect, uploadResource);
+ */
 
-const protect = async (req, res, next) => {
-  let token;
-
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith('Bearer')
-  ) {
-    try {
-      token = req.headers.authorization.split(' ')[1];
-      
-      if (!supabase) {
-        throw new Error('Supabase client not initialized');
-      }
-
-      // Verify token with Supabase
-      const { data: { user }, error } = await supabase.auth.getUser(token);
-
-      if (error || !user) {
-        res.status(401);
-        throw new Error('Not authorized, token failed');
-      }
-
-      req.user = user;
-      next();
-    } catch (error) {
-      console.error(error);
-      res.status(401);
-      next(new Error('Not authorized, token failed'));
-    }
-  }
-
-  if (!token) {
-    res.status(401);
-    next(new Error('Not authorized, no token'));
-  }
+const protect = (req, res, next) => {
+  // No-op: all routes are public. Extend here if auth is re-introduced.
+  next();
 };
 
 export { protect };

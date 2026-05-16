@@ -1,6 +1,7 @@
 import multer from 'multer';
 
-// Use memory storage for processing before uploading to Supabase
+// Use memory storage — the file buffer is piped directly to Cloudinary upload_stream.
+// No temporary files are written to disk.
 const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
