@@ -3,8 +3,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import UploadModal from '../components/UploadModal';
 import PDFPreviewModal from '../components/PDFPreviewModal';
-import { FileText, Lock, Plus, Eye, Trash2, Loader2, Pin, PinOff } from 'lucide-react';
-import { getResources, deleteResource, getResourceFileUrl, updateResourcePin } from '../lib/api';
+import { FileText, Lock, Plus, Eye, Loader2 } from 'lucide-react';
+import { getResources, getResourceFileUrl } from '../lib/api';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -17,8 +17,6 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [previewResource, setPreviewResource] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
-  const [pinningId, setPinningId] = useState(null);
   
 
   const semesters = [
@@ -57,33 +55,6 @@ export default function Dashboard() {
   const handleSemesterClick = (s) => {
     if (s.status !== 'locked') {
       navigate(`/semester/${s.id}`);
-    }
-  };
-
-  const handleDeleteRecent = async (item, e) => {
-    e.stopPropagation();
-    if (!window.confirm(`Delete "${item.title}"? This cannot be undone.`)) return;
-    try {
-      setDeletingId(item._id);
-      await deleteResource(item._id);
-      await fetchDashboardData();
-    } catch (error) {
-      alert(error.message);
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  const handleTogglePin = async (item, e) => {
-    e.stopPropagation();
-    try {
-      setPinningId(item._id);
-      await updateResourcePin(item._id, !item.isPinned);
-      await fetchDashboardData();
-    } catch (error) {
-      alert(error.message || 'Failed to update pinned status.');
-    } finally {
-      setPinningId(null);
     }
   };
 
@@ -214,12 +185,6 @@ export default function Dashboard() {
                         <button onClick={() => setPreviewResource(item)} className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors" title="Preview">
                           <Eye size={14} />
                         </button>
-                        <button onClick={(e) => handleTogglePin(item, e)} disabled={pinningId === item._id} className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors disabled:opacity-50" title={item.isPinned ? 'Unpin' : 'Pin to Department Papers'}>
-                          {pinningId === item._id ? <Loader2 size={14} className="animate-spin" /> : item.isPinned ? <PinOff size={14} /> : <Pin size={14} />}
-                        </button>
-                        <button onClick={(e) => handleDeleteRecent(item, e)} disabled={deletingId === item._id} className="p-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50" title="Delete">
-                          {deletingId === item._id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                        </button>
                       </div>
                     </div>
                   ))
@@ -243,15 +208,6 @@ export default function Dashboard() {
               ) : departmentPapers.length > 0 ? (
                 departmentPapers.map((paper, idx) => (
                   <div key={paper._id || idx} className="h-48 rounded-xl bg-surface border border-white/5 overflow-hidden relative group cursor-pointer" onClick={() => handleOpenPaper(paper)}>
-                    <button
-                      type="button"
-                      onClick={(e) => handleTogglePin(paper, e)}
-                      disabled={pinningId === paper._id}
-                      className="absolute right-3 top-3 z-30 p-2 rounded-lg bg-black/35 text-amber-300 hover:bg-black/55 transition-colors disabled:opacity-50"
-                      title={paper.isPinned ? 'Unpin' : 'Pin to Department Papers'}
-                    >
-                      {pinningId === paper._id ? <Loader2 size={15} className="animate-spin" /> : paper.isPinned ? <PinOff size={15} /> : <Pin size={15} />}
-                    </button>
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0f1523] via-[#0f1523]/80 to-transparent z-10"></div>
                     <div className="absolute bottom-0 left-0 p-5 z-20">
                       <h4 className="text-lg font-bold text-white mb-1 line-clamp-1">{paper.title}</h4>

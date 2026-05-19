@@ -1,24 +1,54 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useMemo, useState } from 'react';
 
-/**
- * AuthContext
- *
- * EduCrate is a fully public platform — no authentication is required.
- * This context is kept as a stub so that any component using `useAuth()`
- * does not crash. It always returns a null user (anonymous).
- *
- * Re-add auth providers here if authentication is introduced in the future.
- */
-const AuthContext = createContext({
-  user:    null,
-  session: null,
-  signOut: () => Promise.resolve(),
-});
+const AUTH_STORAGE_KEY = 'educrate_admin_auth';
 
-export const AuthProvider = ({ children }) => (
-  <AuthContext.Provider value={{ user: null, session: null, signOut: () => Promise.resolve() }}>
-    {children}
-  </AuthContext.Provider>
-);
+const readStoredAuth = () => {
+  try {
+    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : null;
+  } catch (_error) {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    return null;
+  }
+};
 
-export const useAuth = () => useContext(AuthContext);
+const AuthContext = createContext(null);
+
+export const AuthProvider = ({ children }) => {
+  const [auth, setAuth] = useState(() => readStoredAuth());
+
+  const login = ({ token, user }) => {
+    const nextAuth = { token, user };
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextAuth));
+    setAuth(nextAuth);
+  };
+
+  const logout = () => {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
+    setAuth(null);
+  };
+
+  const value = useMemo(() => ({
+    token:   auth?.token || null,
+    user:    auth?.user || null,
+    isAdmin: auth?.user?.role === 'admin' && !!auth?.token,
+    login,
+    logout,
+  }), [auth]);
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used inside AuthProvider');
+  }
+  return context;
+};
+
+export { AUTH_STORAGE_KEY };

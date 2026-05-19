@@ -8,7 +8,6 @@ import {
   ArrowLeft,
   Download,
   Eye,
-  Trash2,
   Loader2,
   Upload,
   BookOpen,
@@ -18,7 +17,7 @@ import {
   ChevronRight,
   ChevronDown,
 } from 'lucide-react';
-import { getResources, deleteResource, getResourceFileUrl } from '../lib/api';
+import { getResources, getResourceFileUrl } from '../lib/api';
 import { getSubjectsForSemester } from '../lib/semesterData';
 
 // ── Tab constants ──────────────────────────────────────────────────────────────
@@ -41,7 +40,6 @@ export default function Semester() {
   const [loadingPyqs, setLoadingPyqs] = useState(false);
   const [openFolders, setOpenFolders] = useState({});   // { [subject]: bool }
   const [previewResource, setPreviewResource] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
   const [uploadModal, setUploadModal] = useState({
     isOpen: false,
     type: TAB_NOTES,
@@ -95,32 +93,6 @@ export default function Semester() {
   // ── Folder toggle ──────────────────────────────────────────────────────────
   const toggleFolder = (subject) => {
     setOpenFolders(prev => ({ ...prev, [subject]: !prev[subject] }));
-  };
-
-  // ── Delete handler ─────────────────────────────────────────────────────────
-  const handleDelete = async (resource) => {
-    if (!window.confirm(`Delete "${resource.title}"?\nThis action cannot be undone.`)) return;
-    try {
-      setDeletingId(resource._id);
-      await deleteResource(resource._id);
-
-      if (resource.type === TAB_PYQS) {
-        setPyqs(prev => prev.filter(r => r._id !== resource._id));
-      } else {
-        setNotes(prev => {
-          const copy = { ...prev };
-          if (copy[resource.subject]) {
-            copy[resource.subject] = copy[resource.subject].filter(r => r._id !== resource._id);
-          }
-          return copy;
-        });
-      }
-    } catch (err) {
-      console.error('Failed to delete resource:', err);
-      alert(err.message || 'Failed to delete resource.');
-    } finally {
-      setDeletingId(null);
-    }
   };
 
   const handleDownload = async (resource) => {
@@ -184,17 +156,6 @@ export default function Semester() {
           title="Download"
         >
           <Download size={15} />
-        </button>
-        <button
-          onClick={() => handleDelete(item)}
-          disabled={deletingId === item._id}
-          className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
-          title="Delete"
-        >
-          {deletingId === item._id
-            ? <Loader2 size={15} className="animate-spin" />
-            : <Trash2 size={15} />
-          }
         </button>
       </div>
     </div>
@@ -343,9 +304,7 @@ export default function Semester() {
             <FlatNotesList
               items={Object.values(notes).flat()}
               onPreview={setPreviewResource}
-              onDelete={handleDelete}
               onDownload={handleDownload}
-              deletingId={deletingId}
               onUpload={() => setUploadModal({ isOpen: true, type: TAB_NOTES })}
             />
           )}
@@ -384,9 +343,7 @@ export default function Semester() {
                   key={item._id || i}
                   item={item}
                   onPreview={setPreviewResource}
-                  onDelete={handleDelete}
                   onDownload={handleDownload}
-                  deletingId={deletingId}
                 />
               ))}
             </div>
@@ -423,7 +380,7 @@ export default function Semester() {
 
 // ── Pure presentational sub-components (outside main component for perf) ────
 
-function PyqCard({ item, onPreview, onDelete, onDownload, deletingId }) {
+function PyqCard({ item, onPreview, onDownload }) {
   return (
     <div className="flex items-center gap-3 p-4 rounded-xl bg-surface border border-white/5 hover:border-amber-500/20 hover:bg-amber-500/3 transition-all group">
       <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
@@ -459,23 +416,12 @@ function PyqCard({ item, onPreview, onDelete, onDownload, deletingId }) {
         >
           <Download size={15} />
         </button>
-        <button
-          onClick={() => onDelete(item)}
-          disabled={deletingId === item._id}
-          className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
-          title="Delete"
-        >
-          {deletingId === item._id
-            ? <Loader2 size={15} className="animate-spin" />
-            : <Trash2 size={15} />
-          }
-        </button>
       </div>
     </div>
   );
 }
 
-function FlatNotesList({ items, onPreview, onDelete, onDownload, deletingId, onUpload }) {
+function FlatNotesList({ items, onPreview, onDownload, onUpload }) {
   if (items.length === 0) {
     return (
       <EmptyState
@@ -508,9 +454,6 @@ function FlatNotesList({ items, onPreview, onDelete, onDownload, deletingId, onU
           <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
             <button onClick={() => onPreview(item)} className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors" title="Preview"><Eye size={15} /></button>
             <button type="button" onClick={() => onDownload(item)} className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors" title="Download"><Download size={15} /></button>
-            <button onClick={() => onDelete(item)} disabled={deletingId === item._id} className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50" title="Delete">
-              {deletingId === item._id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
-            </button>
           </div>
         </div>
       ))}

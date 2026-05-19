@@ -1,0 +1,96 @@
+Act as a Senior Full-Stack Engineer expert in the MERN stack (Vite, React, Express, Node.js, MongoDB, and Tailwind CSS). 
+
+We are implementing an Admin Dashboard for "EduCrate 2.0"—a note-sharing platform for Computer Science students. The platform currently allows public, unauthenticated users to browse, upload, preview, and download PDF resources. 
+
+### Core Constraint & Architecture Choice:
+- DO NOT create a public user registration system. 
+- Use "Option 1: Admin-Only Login". Students remain 100% anonymous/public and do not log in to browse or upload.
+- Only a pre-seeded Admin user in the MongoDB database can log in to access the Admin Panel.
+- Use Role-Based Access Control (RBAC) to secure sensitive mutations (Delete, Pin, Subject Alterations) on the backend.
+
+Refer to the existing project directory structure below to place files exactly where they belong:
+
+EduCrate2.0/
+├── client/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── PDFPreviewModal.jsx
+│   │   │   └── ... (existing layouts)
+│   │   ├── context/
+│   │   │   └── AuthContext.jsx
+│   │   ├── pages/
+│   │   │   ├── admin/             <-- CREATE THIS DIRECTORY
+│   │   │   │   ├── AdminLayout.jsx
+│   │   │   │   ├── AdminOverview.jsx
+│   │   │   │   ├── ResourceManagement.jsx
+│   │   │   │   └── SubjectConfiguration.jsx
+│   │   │   ├── Dashboard.jsx
+│   │   │   ├── Login.jsx
+│   │   │   └── Semester.jsx
+│   │   ├── App.jsx
+│   │   └── lib/
+│   │       └── api.js
+└── server/
+    ├── config/
+    │   └── db.js
+    ├── controllers/
+    │   ├── authController.js      <-- CREATE THIS FILE
+    │   └── resourceController.js
+    ├── middlewares/
+    │   ├── authMiddleware.js      <-- IMPLEMENT THIS FILE
+    │   └── uploadMiddleware.js
+    ├── models/
+    │   ├── Resource.js
+    │   └── User.js                <-- CREATE THIS FILE
+    ├── routes/
+    │   └── apiRoutes.js
+    └── server.js
+
+----------------------------------------------------
+STEP 1: BACKEND DATA LAYER & AUTHENTICATION
+----------------------------------------------------
+1. Create `server/models/User.js`:
+   - Schema fields: `email` (String, unique, required), `password` (String, required), `role` (String, default: 'admin').
+2. Implement `server/middlewares/authMiddleware.js`:
+   - Write a `protectAdmin` middleware that extracts a JWT from the `Authorization: Bearer <token>` header.
+   - Decode the token, find the user in MongoDB, and verify `user.role === 'admin'`. If invalid or missing, return a 401/403 status code with explicit error messages.
+3. Create `server/controllers/authController.js`:
+   - Implement `loginAdmin`: Validate email and password against the database using `bcryptjs.compare()`.
+   - On success, generate and sign a JWT containing the user ID (expires in 1 day) and return the token along with user info.
+4. Update `server/routes/apiRoutes.js`:
+   - Register `POST /api/auth/login`.
+   - Leave `GET /api/resources` and `POST /api/resources` fully PUBLIC so students can access and upload without tokens.
+   - Protect `DELETE /api/resources/:id` and `PATCH /api/resources/:id/pin` using the `protectAdmin` middleware.
+
+----------------------------------------------------
+STEP 2: FRONTEND STATE & API LAYER WIRING
+----------------------------------------------------
+1. Implement `client/src/context/AuthContext.jsx`:
+   - Create an `AuthProvider` managing `token` and `isAdmin` states.
+   - Save the JWT securely in `localStorage` upon successful login.
+   - Provide a `logout` function that clears the storage and resets the state.
+2. Update `client/src/lib/api.js`:
+   - Create an Axios instance or configure fetch calls to automatically append the `Authorization: Bearer <token>` header whenever a token exists in state/localStorage.
+   - Add frontend API bindings for `loginAdmin(email, password)`.
+3. Implement `client/src/pages/Login.jsx`:
+   - Design a minimal, clean Tailwind CSS login interface (Email/Password forms).
+   - On submission, trigger the login API, update `AuthContext`, and redirect to `/admin`.
+
+----------------------------------------------------
+STEP 3: ADMIN DASHBOARD VIEWS & ROUTING
+----------------------------------------------------
+1. Update `client/src/App.jsx`:
+   - Create a protected route wrapper `AdminRoute` that checks `AuthContext`. If not logged in as admin, redirect to `/login`.
+   - Setup the following routing tree:
+     * `/login` -> `Login.jsx`
+     * `/admin` -> `AdminLayout.jsx` (Sub-routes using `<Outlet />`)
+       - `/admin` (index) -> `AdminOverview.jsx`
+       - `/admin/resources` -> `ResourceManagement.jsx`
+2. Create the Admin Interface Pages:
+   - `AdminLayout.jsx`: A responsive dashboard frame featuring a left-side navbar (Overview, Manage Resources, Logout) separate from the main user-facing layout.
+   - `AdminOverview.jsx`: A quick analytics interface displaying aggregate summary cards: Total Documents, Total Storage Size (summed up from resource file sizes), and a visual grid tracking uploads.
+   - `ResourceManagement.jsx`: A comprehensive Tailwind-styled data table utilizing your existing `getResources` and `deleteResource` functions. 
+     * Display columns: Title, Semester, Subject, Type, Size, and Date.
+     * Actions: An inline toggle button to fire `PATCH /api/resources/:id/pin`, and a Delete button that fires `DELETE /api/resources/:id` (which handles clearing both MongoDB records and Cloudinary files safely).
+
+Please generate clean, robust, and production-ready code for these files. Add error handling blocks around database calls and token verifications, and use standard ES Module imports/exports across the workspace.
