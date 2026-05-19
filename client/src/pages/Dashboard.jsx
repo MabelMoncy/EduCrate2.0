@@ -4,7 +4,7 @@ import Layout from '../components/Layout';
 import UploadModal from '../components/UploadModal';
 import PDFPreviewModal from '../components/PDFPreviewModal';
 import { FileText, Lock, Plus, Eye, Trash2, Loader2 } from 'lucide-react';
-import { getResources, deleteResource } from '../lib/api';
+import { getResources, deleteResource, getResourceFileUrl } from '../lib/api';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -67,6 +67,23 @@ export default function Dashboard() {
       alert(error.message);
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleOpenPaper = async (paper) => {
+    const nextTab = window.open('', '_blank');
+    if (nextTab) nextTab.opener = null;
+
+    try {
+      const { url } = await getResourceFileUrl(paper._id);
+      if (nextTab) {
+        nextTab.location.href = url;
+      } else {
+        window.location.href = url;
+      }
+    } catch (error) {
+      if (nextTab) nextTab.close();
+      alert(error.message || 'Failed to open paper.');
     }
   };
 
@@ -177,7 +194,7 @@ export default function Dashboard() {
                 <p className="text-textMuted text-sm">Loading papers...</p>
               ) : departmentPapers.length > 0 ? (
                 departmentPapers.map((paper, idx) => (
-                  <div key={paper._id || idx} className="h-48 rounded-xl bg-surface border border-white/5 overflow-hidden relative group cursor-pointer" onClick={() => window.open(paper.fileUrl, '_blank')}>
+                  <div key={paper._id || idx} className="h-48 rounded-xl bg-surface border border-white/5 overflow-hidden relative group cursor-pointer" onClick={() => handleOpenPaper(paper)}>
                     <div className="absolute inset-0 bg-gradient-to-t from-[#0f1523] via-[#0f1523]/80 to-transparent z-10"></div>
                     <div className="absolute bottom-0 left-0 p-5 z-20">
                       <h4 className="text-lg font-bold text-white mb-1 line-clamp-1">{paper.title}</h4>

@@ -19,7 +19,7 @@ import {
   ChevronDown,
   AlertCircle,
 } from 'lucide-react';
-import { getResources, deleteResource } from '../lib/api';
+import { getResources, deleteResource, getResourceFileUrl } from '../lib/api';
 import { getSubjectsForSemester } from '../lib/semesterData';
 
 // ── Tab constants ──────────────────────────────────────────────────────────────
@@ -130,6 +130,24 @@ export default function Semester() {
     }
   };
 
+  const handleDownload = async (resource) => {
+    const nextTab = window.open('', '_blank');
+    if (nextTab) nextTab.opener = null;
+
+    try {
+      const { url } = await getResourceFileUrl(resource._id, { attachment: true });
+      if (nextTab) {
+        nextTab.location.href = url;
+      } else {
+        window.location.href = url;
+      }
+    } catch (err) {
+      if (nextTab) nextTab.close();
+      console.error('Failed to prepare download:', err);
+      alert(err.message || 'Failed to prepare download.');
+    }
+  };
+
   // ── Upload success ─────────────────────────────────────────────────────────
   const handleUploadSuccess = () => {
     if (uploadModal.type === TAB_NOTES) {
@@ -166,15 +184,14 @@ export default function Semester() {
         >
           <Eye size={15} />
         </button>
-        <a
-          href={`/api/proxy?url=${encodeURIComponent(item.fileUrl)}&dl=1&name=${encodeURIComponent(item.title || 'document')}.pdf`}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
+          onClick={() => handleDownload(item)}
           className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
           title="Download"
         >
           <Download size={15} />
-        </a>
+        </button>
         <button
           onClick={() => handleDelete(item)}
           disabled={deletingId === item._id}
@@ -334,6 +351,7 @@ export default function Semester() {
               items={Object.values(notes).flat()}
               onPreview={setPreviewResource}
               onDelete={handleDelete}
+              onDownload={handleDownload}
               deletingId={deletingId}
               onUpload={() => setUploadModal({ isOpen: true, type: TAB_NOTES })}
             />
@@ -374,6 +392,7 @@ export default function Semester() {
                   item={item}
                   onPreview={setPreviewResource}
                   onDelete={handleDelete}
+                  onDownload={handleDownload}
                   deletingId={deletingId}
                 />
               ))}
@@ -411,7 +430,7 @@ export default function Semester() {
 
 // ── Pure presentational sub-components (outside main component for perf) ────
 
-function PyqCard({ item, onPreview, onDelete, deletingId }) {
+function PyqCard({ item, onPreview, onDelete, onDownload, deletingId }) {
   return (
     <div className="flex items-center gap-3 p-4 rounded-xl bg-surface border border-white/5 hover:border-amber-500/20 hover:bg-amber-500/3 transition-all group">
       <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
@@ -439,15 +458,14 @@ function PyqCard({ item, onPreview, onDelete, deletingId }) {
         >
           <Eye size={15} />
         </button>
-        <a
-          href={`/api/proxy?url=${encodeURIComponent(item.fileUrl)}&dl=1&name=${encodeURIComponent(item.title || 'document')}.pdf`}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
+          onClick={() => onDownload(item)}
           className="p-2 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors"
           title="Download"
         >
           <Download size={15} />
-        </a>
+        </button>
         <button
           onClick={() => onDelete(item)}
           disabled={deletingId === item._id}
@@ -464,7 +482,7 @@ function PyqCard({ item, onPreview, onDelete, deletingId }) {
   );
 }
 
-function FlatNotesList({ items, onPreview, onDelete, deletingId, onUpload }) {
+function FlatNotesList({ items, onPreview, onDelete, onDownload, deletingId, onUpload }) {
   if (items.length === 0) {
     return (
       <EmptyState
@@ -496,7 +514,7 @@ function FlatNotesList({ items, onPreview, onDelete, deletingId, onUpload }) {
           </div>
           <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
             <button onClick={() => onPreview(item)} className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors" title="Preview"><Eye size={15} /></button>
-            <a href={`/api/proxy?url=${encodeURIComponent(item.fileUrl)}&dl=1&name=${encodeURIComponent(item.title || 'document')}.pdf`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors" title="Download"><Download size={15} /></a>
+            <button type="button" onClick={() => onDownload(item)} className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors" title="Download"><Download size={15} /></button>
             <button onClick={() => onDelete(item)} disabled={deletingId === item._id} className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50" title="Delete">
               {deletingId === item._id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
             </button>

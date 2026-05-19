@@ -58,3 +58,24 @@ export const deleteResource = async (id) => {
 
   return response.json();
 };
+
+export const getResourceFileUrl = async (id, { attachment = false } = {}) => {
+  const queryParams = new URLSearchParams();
+  if (attachment) queryParams.set('attachment', 'true');
+
+  const response = await fetch(`${API_URL}/resources/${id}/file-url?${queryParams.toString()}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  if (!response.ok) {
+    let message = 'Failed to prepare file link';
+    try {
+      const errorData = await response.json();
+      message = errorData.message || message;
+    } catch (_) {}
+    throw new Error(`${message} (status: ${response.status})`);
+  }
+
+  return response.json();
+};

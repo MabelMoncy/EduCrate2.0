@@ -110,6 +110,42 @@ const getResources = async (req, res, next) => {
   }
 };
 
+// ── @desc    Get a signed Cloudinary URL for a PDF resource                  ────
+// ── @route   GET /api/resources/:id/file-url                                ────
+// ── @access  Public                                                        ────
+const getResourceFileUrl = async (req, res, next) => {
+  try {
+    const resource = await Resource.findById(req.params.id);
+
+    if (!resource) {
+      res.status(404);
+      throw new Error('Resource not found');
+    }
+
+    if (!resource.cloudinaryPublicId) {
+      res.status(400);
+      throw new Error('Missing Cloudinary file reference');
+    }
+
+    const attachment = req.query.attachment === 'true';
+    const expiresAt = Math.floor(Date.now() / 1000) + (10 * 60);
+    const url = cloudinary.utils.private_download_url(
+      resource.cloudinaryPublicId,
+      'pdf',
+      {
+        resource_type: 'raw',
+        type: 'upload',
+        ...(attachment ? { attachment: true } : {}),
+        expires_at: expiresAt,
+      }
+    );
+
+    res.json({ url, expiresAt });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // ── @desc    Upload a new resource                                          ────
 // ── @route   POST /api/resources                                           ────
 // ── @access  Public                                                        ────
@@ -240,4 +276,4 @@ const deleteResource = async (req, res, next) => {
   }
 };
 
-export { getResources, uploadResource, deleteResource };
+export { getResources, getResourceFileUrl, uploadResource, deleteResource };
