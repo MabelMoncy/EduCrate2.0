@@ -50,7 +50,34 @@ const SEMESTER_SUBJECTS = {
     'Operating Systems Lab',
     'DBMS Lab',
   ],
-  // Add other semesters as they are configured on the frontend.
+  S5: [],
+  S6: [],
+  S7: [],
+  S8: [],
+};
+
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const buildResourceQuery = ({ semester, isPinned, subject, type, search } = {}) => {
+  const query = {};
+  if (semester) query.semester = semester;
+  if (subject)  query.subject  = subject;
+  if (type)     query.type     = type;
+  if (isPinned === 'true' || isPinned === true) query.isPinned = true;
+
+  if (search && search.trim()) {
+    const term = escapeRegex(search.trim());
+    const regex = new RegExp(term, 'i');
+    query.$or = [
+      { title: regex },
+      { description: regex },
+      { semester: regex },
+      { subject: regex },
+      { type: regex },
+    ];
+  }
+
+  return query;
 };
 
 /**
@@ -92,13 +119,8 @@ const uploadToCloudinary = (buffer, folder, publicId) =>
 // ── @access  Public                                                        ────
 const getResources = async (req, res, next) => {
   try {
-    const { limit, semester, isPinned, subject, type } = req.query;
-
-    const query = {};
-    if (semester) query.semester = semester;
-    if (subject)  query.subject  = subject;
-    if (type)     query.type     = type;
-    if (isPinned === 'true') query.isPinned = true;
+    const { limit } = req.query;
+    const query = buildResourceQuery(req.query);
 
     let resourcesQuery = Resource.find(query).sort({ createdAt: -1 });
     if (limit) resourcesQuery = resourcesQuery.limit(parseInt(limit, 10));
@@ -186,7 +208,7 @@ const uploadResource = async (req, res, next) => {
       res.status(400);
       throw new Error('Subject is required');
     }
-    if (SEMESTER_SUBJECTS[semester] && !SEMESTER_SUBJECTS[semester].includes(subject)) {
+    if (SEMESTER_SUBJECTS[semester]?.length > 0 && !SEMESTER_SUBJECTS[semester].includes(subject)) {
       res.status(400);
       throw new Error(`Invalid subject for ${semester}. Must be one of the predefined subjects.`);
     }
@@ -276,4 +298,40 @@ const deleteResource = async (req, res, next) => {
   }
 };
 
-export { getResources, getResourceFileUrl, uploadResource, deleteResource };
+// ── @desc    Pin or unpin a resource                                       ────
+// ── @route   PATCH /api/resources/:id/pin                                  ────
+// ── @access  Public                                                        ────
+const updateResourcePin = async (req, res, next) => {
+  try {
+    const { isPinned } = req.body;
+
+    if (typeof isPinned !== 'boolean') {
+      res.status(400);
+      throw new Error('isPinned must be a boolean');
+    }
+
+    const resource = await Resource.findByIdAndUpdate(
+      req.params.id,
+      { isPinned },
+      { new: true, runValidators: true }
+    );
+
+    if (!resource) {
+      res.status(404);
+      throw new Error('Resource not found');
+    }
+
+    res.json(resource);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export {
+  buildResourceQuery,
+  getResources,
+  getResourceFileUrl,
+  uploadResource,
+  deleteResource,
+  updateResourcePin,
+};

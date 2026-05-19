@@ -15,7 +15,9 @@ export const getResources = async (params = {}) => {
     try {
       const err = await response.json();
       message = err.message || message;
-    } catch (_) {}
+    } catch (_) {
+      // Keep the default message when the server does not return JSON.
+    }
     throw new Error(`${message} (status: ${response.status})`);
   }
 
@@ -34,7 +36,9 @@ export const uploadResource = async (formData) => {
     try {
       const errorData = await response.json();
       message = errorData.message || message;
-    } catch (_) {}
+    } catch (_) {
+      // Keep the default message when the server does not return JSON.
+    }
     throw new Error(`${message} (status: ${response.status})`);
   }
 
@@ -52,7 +56,30 @@ export const deleteResource = async (id) => {
     try {
       const errorData = await response.json();
       message = errorData.message || message;
-    } catch (_) {}
+    } catch (_) {
+      // Keep the default message when the server does not return JSON.
+    }
+    throw new Error(`${message} (status: ${response.status})`);
+  }
+
+  return response.json();
+};
+
+export const updateResourcePin = async (id, isPinned) => {
+  const response = await fetch(`${API_URL}/resources/${id}/pin`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ isPinned }),
+  });
+
+  if (!response.ok) {
+    let message = 'Failed to update pinned status';
+    try {
+      const errorData = await response.json();
+      message = errorData.message || message;
+    } catch (_) {
+      // Keep the default message when the server does not return JSON.
+    }
     throw new Error(`${message} (status: ${response.status})`);
   }
 
@@ -73,7 +100,9 @@ export const getResourceFileUrl = async (id, { attachment = false } = {}) => {
     try {
       const errorData = await response.json();
       message = errorData.message || message;
-    } catch (_) {}
+    } catch (_) {
+      // Keep the default message when the server does not return JSON.
+    }
     throw new Error(`${message} (status: ${response.status})`);
   }
 

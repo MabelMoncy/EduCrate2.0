@@ -5,7 +5,7 @@
  * This file is kept as a placeholder. The /login route is not registered
  * in App.jsx. Navigating here auto-redirects to the dashboard.
  */
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Login() {

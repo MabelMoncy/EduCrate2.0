@@ -220,9 +220,11 @@ All endpoints are under `/api`:
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/resources` | Fetch resources. Supports query params: `semester`, `subject`, `type`, `isPinned`, `limit` |
+| `GET` | `/api/resources` | Fetch resources. Supports query params: `semester`, `subject`, `type`, `isPinned`, `limit`, `search` |
 | `POST` | `/api/resources` | Upload a resource. Multipart form: `title`, `description`, `semester`, `subject`, `type`, `file` |
 | `DELETE` | `/api/resources/:id` | Delete a resource by MongoDB `_id` (also removes from Cloudinary) |
+| `PATCH` | `/api/resources/:id/pin` | Pin/unpin a resource for Department Papers |
+| `GET` | `/api/resources/:id/file-url` | Generate a temporary Cloudinary URL for preview/download |
 | `GET` | `/api/health` | Health check — returns `{ status: 'ok' }` |
 
 ---
@@ -280,15 +282,17 @@ The project previously used **Supabase** for file storage. It has been fully rip
 
 1. **✅ Cloudinary credentials are set** — `server/.env` has real values for `CLOUDINARY_CLOUD_NAME` (`dlavwndne`), `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET`. Upload is fully operational once the server is running.
 
-2. **S5–S8 subjects not configured** — `semesterData.js` and `resourceController.js` both have empty arrays for semesters 5–8. Add subjects when the curriculum is confirmed.
+2. **S5–S8 official subject lists still need curriculum confirmation** — these semesters are now usable because the upload UI accepts a custom subject when no configured list exists. Add official subject arrays to `semesterData.js` and `resourceController.js` when confirmed.
 
-3. **No search implementation** — `TopNav.jsx` has a search bar in the UI but it is not wired to any search/filter logic.
+3. **Search is implemented** — the top nav search writes `q` to the URL, the dashboard shows matching resources, and the backend searches title, description, semester, subject, and type.
 
-4. **Dashboard "View All" link** — The "View All" anchor in the Recents section is an `<a href="#">` placeholder with no functionality.
+4. **Dashboard "View All" is implemented** — the Recents panel can switch between the three-item view and the full resource list.
 
-5. **isPinned management** — The `isPinned` field exists in the schema and is queried on the dashboard (for "Department Papers"), but there is no UI or API endpoint to toggle it. Resources must be manually pinned in the database.
+5. **Pinned Department Papers are manageable** — resources can be pinned/unpinned from the dashboard through `PATCH /api/resources/:id/pin`.
 
-6. **Error boundary missing** — No React error boundary wrapping. A failed API call could crash a subtree silently.
+6. **React error boundary added** — app-level fallback UI catches unexpected render errors.
+
+7. **Automated tests added** — server and client both have Node test scripts covering resource query construction and semester configuration behavior.
 
 ---
 

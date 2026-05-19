@@ -17,7 +17,6 @@ import {
   FolderOpen,
   ChevronRight,
   ChevronDown,
-  AlertCircle,
 } from 'lucide-react';
 import { getResources, deleteResource, getResourceFileUrl } from '../lib/api';
 import { getSubjectsForSemester } from '../lib/semesterData';
@@ -41,7 +40,6 @@ export default function Semester() {
   const [loadingNotes, setLoadingNotes] = useState(false);
   const [loadingPyqs, setLoadingPyqs] = useState(false);
   const [openFolders, setOpenFolders] = useState({});   // { [subject]: bool }
-  const [loadingFolder, setLoadingFolder] = useState({});   // { [subject]: bool }
   const [previewResource, setPreviewResource] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [uploadModal, setUploadModal] = useState({
@@ -51,24 +49,19 @@ export default function Semester() {
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
-  /**
-   * For semesters WITH subject config: fetch the resource count per subject
-   * (so the folder cards can show a count badge before they are expanded).
-   * We fetch all notes for the semester once and group them client-side.
-   */
   const fetchAllNotes = useCallback(async () => {
-    if (!hasSubjects) return;
     setLoadingNotes(true);
     try {
       const data = await getResources({ semester: id, type: TAB_NOTES });
-      // Group by subject
       const grouped = {};
-      subjects.forEach(s => { grouped[s] = []; });
+      subjects.forEach(subject => { grouped[subject] = []; });
       data.forEach(r => {
         if (grouped[r.subject] !== undefined) {
           grouped[r.subject].push(r);
+        } else if (!hasSubjects) {
+          if (!grouped[r.subject]) grouped[r.subject] = [];
+          grouped[r.subject].push(r);
         } else {
-          // Subject not in config; bucket under "Other"
           if (!grouped['Other']) grouped['Other'] = [];
           grouped['Other'].push(r);
         }

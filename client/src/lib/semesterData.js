@@ -54,8 +54,12 @@ export const SEMESTER_SUBJECTS = {
     'Operating Systems Lab',
     'DBMS Lab',
   ],
-  // S5: [], S6: [], S7: [], S8: []
-  // Populate above when ready, following the same pattern as S4.
+  // Keep S5-S8 open for now. The upload UI allows a custom subject until
+  // the official curriculum is added here.
+  S5: [],
+  S6: [],
+  S7: [],
+  S8: [],
 };
 
 /**

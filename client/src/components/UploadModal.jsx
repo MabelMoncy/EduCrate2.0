@@ -1,13 +1,19 @@
 import React, { useState } from 'react';
 import { X, Upload, Loader2 } from 'lucide-react';
 import { uploadResource } from '../lib/api';
+import { getSubjectsForSemester, VALID_SEMESTERS } from '../lib/semesterData';
+
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+const DEFAULT_SEMESTER = 'S1';
+const defaultSubject = getSubjectsForSemester(DEFAULT_SEMESTER)[0] || '';
 
 export default function UploadModal({ isOpen, onClose, onSuccess }) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    semester: 'S1',
-    subject: '',
+    semester: DEFAULT_SEMESTER,
+    subject: defaultSubject,
+    type: 'notes',
     file: null,
   });
   const [loading, setLoading] = useState(false);
@@ -18,7 +24,20 @@ export default function UploadModal({ isOpen, onClose, onSuccess }) {
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (name === 'file') {
-      setFormData(prev => ({ ...prev, file: files[0] }));
+      const file = files[0];
+      if (file && file.type !== 'application/pdf') {
+        setError('Only PDF files are allowed.');
+        return;
+      }
+      if (file && file.size > MAX_FILE_SIZE_BYTES) {
+        setError('File is too large. Maximum size is 10 MB.');
+        return;
+      }
+      setError(null);
+      setFormData(prev => ({ ...prev, file }));
+    } else if (name === 'semester') {
+      const subjects = getSubjectsForSemester(value);
+      setFormData(prev => ({ ...prev, semester: value, subject: subjects[0] || '' }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -40,6 +59,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess }) {
       data.append('description', formData.description);
       data.append('semester', formData.semester);
       data.append('subject', formData.subject);
+      data.append('type', formData.type);
       data.append('file', formData.file);
 
       await uploadResource(data);
@@ -49,8 +69,9 @@ export default function UploadModal({ isOpen, onClose, onSuccess }) {
       setFormData({
         title: '',
         description: '',
-        semester: 'S1',
-        subject: '',
+        semester: DEFAULT_SEMESTER,
+        subject: defaultSubject,
+        type: 'notes',
         file: null,
       });
     } catch (err) {
@@ -60,7 +81,7 @@ export default function UploadModal({ isOpen, onClose, onSuccess }) {
     }
   };
 
-  const semesters = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'];
+  const subjects = getSubjectsForSemester(formData.semester);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -116,21 +137,47 @@ export default function UploadModal({ isOpen, onClose, onSuccess }) {
                 onChange={handleChange}
                 className="w-full bg-[#151a28] border border-white/5 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary/50 transition-colors appearance-none"
               >
-                {semesters.map(s => <option key={s} value={s}>{s}</option>)}
+                {VALID_SEMESTERS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">Subject</label>
-              <input 
-                type="text" 
-                name="subject"
-                required
-                value={formData.subject}
-                onChange={handleChange}
-                className="w-full bg-[#151a28] border border-white/5 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary/50 transition-colors"
-                placeholder="e.g. CS302"
-              />
+              {subjects.length > 0 ? (
+                <select
+                  name="subject"
+                  required
+                  value={formData.subject}
+                  onChange={handleChange}
+                  className="w-full bg-[#151a28] border border-white/5 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary/50 transition-colors appearance-none"
+                >
+                  <option value="">Select subject</option>
+                  {subjects.map(subject => <option key={subject} value={subject}>{subject}</option>)}
+                </select>
+              ) : (
+                <input 
+                  type="text" 
+                  name="subject"
+                  required
+                  value={formData.subject}
+                  onChange={handleChange}
+                  className="w-full bg-[#151a28] border border-white/5 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary/50 transition-colors"
+                  placeholder="Enter subject name"
+                />
+              )}
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Resource Type</label>
+            <select
+              name="type"
+              value={formData.type}
+              onChange={handleChange}
+              className="w-full bg-[#151a28] border border-white/5 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-primary/50 transition-colors appearance-none"
+            >
+              <option value="notes">Notes</option>
+              <option value="pyq">PYQ</option>
+            </select>
           </div>
 
           <div>

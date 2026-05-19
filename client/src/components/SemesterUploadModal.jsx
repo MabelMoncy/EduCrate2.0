@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Upload, Loader2, BookOpen, FileQuestion, ChevronDown } from 'lucide-react';
 import { uploadResource } from '../lib/api';
-import { getSubjectsForSemester, VALID_SEMESTERS } from '../lib/semesterData';
+import { getSubjectsForSemester } from '../lib/semesterData';
 
 const MAX_FILE_SIZE_MB = 10;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -200,28 +200,38 @@ export default function SemesterUploadModal({
               >
                 Subject <span className="text-red-400">*</span>
               </label>
-              <div className="relative">
-                <select
+              {subjects.length > 0 ? (
+                <div className="relative">
+                  <select
+                    id="sem-subject"
+                    name="subject"
+                    value={formData.subject}
+                    onChange={handleChange}
+                    required
+                    className="w-full bg-[#151a28] border border-white/8 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/30 transition-colors appearance-none pr-10 cursor-pointer"
+                  >
+                    {subjects.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    size={16}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-textMuted pointer-events-none"
+                  />
+                </div>
+              ) : (
+                <input
                   id="sem-subject"
+                  type="text"
                   name="subject"
+                  required
+                  maxLength={120}
                   value={formData.subject}
                   onChange={handleChange}
-                  required
-                  className="w-full bg-[#151a28] border border-white/8 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/30 transition-colors appearance-none pr-10 cursor-pointer"
-                >
-                  {subjects.length === 0 ? (
-                    <option value="">No subjects configured for {semester}</option>
-                  ) : (
-                    subjects.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))
-                  )}
-                </select>
-                <ChevronDown
-                  size={16}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-textMuted pointer-events-none"
+                  placeholder="Enter subject name"
+                  className="w-full bg-[#151a28] border border-white/8 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/30 transition-colors"
                 />
-              </div>
+              )}
             </div>
 
             {/* Title */}
@@ -327,7 +337,7 @@ export default function SemesterUploadModal({
           <button
             type="submit"
             form="sem-upload-form"
-            disabled={loading || subjects.length === 0}
+            disabled={loading}
             className="w-full bg-primary text-white font-semibold py-3 rounded-xl hover:bg-primaryHover transition-all shadow-[0_0_20px_rgba(37,99,235,0.35)] disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2"
           >
             {loading ? (
