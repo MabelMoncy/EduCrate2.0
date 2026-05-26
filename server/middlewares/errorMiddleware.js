@@ -4,12 +4,25 @@ const notFound = (req, res, next) => {
   next(error);
 };
 
+const isLocalAddress = (address = '') => {
+  const value = address.toLowerCase();
+  return value === '127.0.0.1' || value === '::1' || value === '::ffff:127.0.0.1';
+};
+
 const errorHandler = (err, req, res, next) => {
-  const statusCode = res.statusCode === 200 ? 500 : res.statusCode;
+  const isCorsError = err?.message === 'Not allowed by CORS';
+  const statusCode =
+    res.statusCode === 200 ? (isCorsError ? 403 : 500) : res.statusCode;
   res.status(statusCode);
+
+  const shouldExposeStack =
+    process.env.SHOW_STACKTRACE === 'true' ||
+    (process.env.NODE_ENV === 'development' &&
+      (isLocalAddress(req.ip) || isLocalAddress(req.socket?.remoteAddress)));
+
   res.json({
     message: err.message,
-    stack: process.env.NODE_ENV === 'production' ? null : err.stack,
+    stack: shouldExposeStack ? err.stack : null,
   });
 };
 
