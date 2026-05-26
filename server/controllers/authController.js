@@ -24,18 +24,18 @@ const loginAdmin = async (req, res, next) => {
     const user = await User.findOne({ email });
     if (!user) {
       res.status(401);
-      throw new Error('Invalid admin credentials');
+      throw new Error('Invalid credentials');
     }
 
     if (user.role !== 'admin') {
-      res.status(403);
-      throw new Error('This account is not allowed to access the admin panel');
+      res.status(401);
+      throw new Error('Invalid credentials');
     }
 
     const passwordMatches = await bcrypt.compare(password, user.password);
     if (!passwordMatches) {
       res.status(401);
-      throw new Error('Invalid admin credentials');
+      throw new Error('Invalid credentials');
     }
 
     const token = signToken(user._id);

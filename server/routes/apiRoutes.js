@@ -1,4 +1,5 @@
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import {
   getResources,
   getResourceFileUrl,
@@ -12,7 +13,15 @@ import upload from '../middlewares/uploadMiddleware.js';
 
 const router = express.Router();
 
-router.post('/auth/login', loginAdmin);
+const loginLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 5,
+  message: 'Too many login attempts. Please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+router.post('/auth/login', loginLimiter, loginAdmin);
 
 router.route('/resources')
   .get(getResources)
