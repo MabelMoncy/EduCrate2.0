@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
 import Semester from './pages/Semester';
@@ -10,6 +10,7 @@ import AdminOverview from './pages/admin/AdminOverview';
 import ResourceManagement from './pages/admin/ResourceManagement';
 import SubjectConfiguration from './pages/admin/SubjectConfiguration';
 import { useAuth } from './context/AuthContext';
+import SplashScreen from './components/SplashScreen';
 
 function AdminRoute({ children }) {
   const location = useLocation();
@@ -23,30 +24,44 @@ function AdminRoute({ children }) {
 }
 
 function App() {
+  // Show splash once per session; subsequent navigations skip it.
+  const [splashDone, setSplashDone] = useState(
+    () => sessionStorage.getItem('splashShown') === 'true'
+  );
+
+  const handleSplashFinish = () => {
+    sessionStorage.setItem('splashShown', 'true');
+    setSplashDone(true);
+  };
+
   return (
     <ErrorBoundary>
-      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/semester/:id" element={<Semester />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/login" element={<Login />} />
-          <Route
-            path="/admin"
-            element={(
-              <AdminRoute>
-                <AdminLayout />
-              </AdminRoute>
-            )}
-          >
-            <Route index element={<AdminOverview />} />
-            <Route path="resources" element={<ResourceManagement />} />
-            <Route path="subjects" element={<SubjectConfiguration />} />
-          </Route>
-        </Routes>
-      </Router>
+      {!splashDone && <SplashScreen onFinish={handleSplashFinish} />}
+      {splashDone && (
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/semester/:id" element={<Semester />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/admin"
+              element={(
+                <AdminRoute>
+                  <AdminLayout />
+                </AdminRoute>
+              )}
+            >
+              <Route index element={<AdminOverview />} />
+              <Route path="resources" element={<ResourceManagement />} />
+              <Route path="subjects" element={<SubjectConfiguration />} />
+            </Route>
+          </Routes>
+        </Router>
+      )}
     </ErrorBoundary>
   );
 }
 
 export default App;
+

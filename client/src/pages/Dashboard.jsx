@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
-import UploadModal from '../components/UploadModal';
 import PDFPreviewModal from '../components/PDFPreviewModal';
-import { FileText, Lock, Plus, Eye, Loader2 } from 'lucide-react';
+import { FileText, Lock, Eye, Loader2 } from 'lucide-react';
 import { getResources, getResourceFileUrl } from '../lib/api';
 
 export default function Dashboard() {
@@ -15,7 +14,6 @@ export default function Dashboard() {
   const [recentResources, setRecentResources] = useState([]);
   const [departmentPapers, setDepartmentPapers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [previewResource, setPreviewResource] = useState(null);
   
 
@@ -24,10 +22,10 @@ export default function Dashboard() {
     { id: 'S2', title: 'Semester 2', desc: 'ALGORITHMS', status: 'completed' },
     { id: 'S3', title: 'Semester 3', desc: 'SYSTEMS', status: 'completed' },
     { id: 'S4', title: 'Semester 4', desc: 'NETWORKS', status: 'completed' },
-    { id: 'S5', title: 'Semester 5', desc: 'CURRENT', status: 'current' },
-    { id: 'S6', title: 'Semester 6', desc: '', status: 'locked' },
-    { id: 'S7', title: 'Semester 7', desc: '', status: 'locked' },
-    { id: 'S8', title: 'Semester 8', desc: '', status: 'locked' },
+    { id: 'S5', title: 'Semester 5', desc: 'ADVANCED', status: 'completed' },
+    { id: 'S6', title: 'Semester 6', desc: 'UPCOMING', status: 'upcoming' },
+    { id: 'S7', title: 'Semester 7', desc: 'UPCOMING', status: 'upcoming' },
+    { id: 'S8', title: 'Semester 8', desc: 'UPCOMING', status: 'upcoming' },
   ];
 
   const fetchDashboardData = useCallback(async () => {
@@ -53,9 +51,7 @@ export default function Dashboard() {
   }, [fetchDashboardData]);
 
   const handleSemesterClick = (s) => {
-    if (s.status !== 'locked') {
-      navigate(`/semester/${s.id}`);
-    }
+    navigate(`/semester/${s.id}`);
   };
 
   const handleViewAll = () => {
@@ -97,13 +93,6 @@ export default function Dashboard() {
                 Browse, upload, and share CS resources freely — no account needed. There {recentResources.length === 1 ? 'is' : 'are'} <span className="text-white font-medium">{recentResources.length} resource{recentResources.length !== 1 ? 's' : ''}</span> uploaded by the community so far.
               </p>
             </div>
-        <button 
-          onClick={() => setIsUploadModalOpen(true)}
-          className="bg-primary hover:bg-primaryHover text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors shadow-lg shadow-primary/20 w-full md:w-auto justify-center"
-        >
-          <Plus size={20} />
-          Upload
-        </button>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
@@ -116,31 +105,24 @@ export default function Dashboard() {
           
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 {semesters.map((s) => (
-                  <div 
-                    key={s.id} 
+                  <div
+                    key={s.id}
                     onClick={() => handleSemesterClick(s)}
-                    className={`relative p-5 rounded-xl border transition-all h-32 flex flex-col justify-between group ${
-                      s.status === 'current' 
-                        ? 'bg-primary/10 border-primary hover:bg-primary/20 cursor-pointer' 
-                        : s.status === 'locked'
-                          ? 'bg-[#121825] border-transparent opacity-50 cursor-not-allowed'
-                          : 'bg-surface border-white/5 hover:border-white/20 hover:bg-[#252c3e] cursor-pointer'
-                    }`}
+                    className="relative p-5 rounded-xl border transition-all h-32 flex flex-col justify-between group bg-surface border-white/5 hover:border-white/20 hover:bg-[#252c3e] cursor-pointer"
                   >
-                    <span className={`text-sm font-bold ${s.status === 'current' ? 'text-primary' : 'text-textMuted'}`}>
+                    <span className="text-sm font-bold text-textMuted">
                       {s.id}
                     </span>
-                    
+
                     <div>
-                      <h4 className={`text-lg font-bold ${s.status === 'locked' ? 'text-gray-600' : 'text-white'}`}>
+                      <h4 className="text-lg font-bold text-white">
                         {s.title}
                       </h4>
                       {s.desc && (
-                        <p className={`text-[10px] tracking-widest uppercase mt-1 ${s.status === 'current' ? 'text-primary' : 'text-textMuted'}`}>
+                        <p className="text-[10px] tracking-widest uppercase mt-1 text-textMuted">
                           {s.desc}
                         </p>
                       )}
-                      {s.status === 'locked' && <Lock size={14} className="text-gray-600 mt-1" />}
                     </div>
                   </div>
                 ))}
@@ -221,11 +203,6 @@ export default function Dashboard() {
             </div>
       </div>
 
-      <UploadModal 
-        isOpen={isUploadModalOpen} 
-        onClose={() => setIsUploadModalOpen(false)} 
-        onSuccess={fetchDashboardData}
-      />
       {previewResource && (
         <PDFPreviewModal
           resource={previewResource}

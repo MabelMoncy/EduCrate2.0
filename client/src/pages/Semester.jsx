@@ -16,6 +16,8 @@ import {
   FolderOpen,
   ChevronRight,
   ChevronDown,
+  Lock,
+  X,
 } from 'lucide-react';
 import { getResources, getResourceFileUrl } from '../lib/api';
 import { getSubjectsForSemester } from '../lib/semesterData';
@@ -32,6 +34,10 @@ export default function Semester() {
   const subjects = getSubjectsForSemester(id);
   const hasSubjects = subjects.length > 0;
 
+  // S6–S8 are 'upcoming' — students can browse but not upload
+  const semesterNum = parseInt(id?.replace('S', '') || '0', 10);
+  const uploadAllowed = semesterNum < 6;
+
   // ── State ──────────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState(TAB_NOTES);
   const [notes, setNotes] = useState({});   // { [subject]: Resource[] }
@@ -44,6 +50,7 @@ export default function Semester() {
     isOpen: false,
     type: TAB_NOTES,
   });
+  const [notLiveModal, setNotLiveModal] = useState(false);
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
@@ -110,6 +117,15 @@ export default function Semester() {
       if (nextTab) nextTab.close();
       console.error('Failed to prepare download:', err);
       alert(err.message || 'Failed to prepare download.');
+    }
+  };
+
+  // ── Upload handler — intercepts blocked semesters ──────────────────────────
+  const handleUploadClick = (type) => {
+    if (!uploadAllowed) {
+      setNotLiveModal(true);
+    } else {
+      setUploadModal({ isOpen: true, type });
     }
   };
 
@@ -201,7 +217,7 @@ export default function Semester() {
                 <FileText className="text-textMuted opacity-25" size={36} />
                 <p className="text-sm text-textMuted">No notes uploaded yet for this subject.</p>
                 <button
-                  onClick={() => setUploadModal({ isOpen: true, type: TAB_NOTES })}
+                  onClick={() => handleUploadClick(TAB_NOTES)}
                   className="mt-1 text-xs text-primary hover:underline"
                 >
                   Upload the first one →
@@ -278,7 +294,7 @@ export default function Semester() {
               {hasSubjects ? 'Subject Folders' : 'All Notes'}
             </h3>
             <button
-              onClick={() => setUploadModal({ isOpen: true, type: TAB_NOTES })}
+              onClick={() => handleUploadClick(TAB_NOTES)}
               className="flex items-center gap-2 bg-primary hover:bg-primaryHover text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)]"
               id="upload-notes-btn"
             >
@@ -305,7 +321,7 @@ export default function Semester() {
               items={Object.values(notes).flat()}
               onPreview={setPreviewResource}
               onDownload={handleDownload}
-              onUpload={() => setUploadModal({ isOpen: true, type: TAB_NOTES })}
+              onUpload={() => handleUploadClick(TAB_NOTES)}
             />
           )}
         </section>
@@ -322,7 +338,7 @@ export default function Semester() {
               Question Papers
             </h3>
             <button
-              onClick={() => setUploadModal({ isOpen: true, type: TAB_PYQS })}
+              onClick={() => handleUploadClick(TAB_PYQS)}
               className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all shadow-[0_0_15px_rgba(217,119,6,0.25)]"
               id="upload-pyq-btn"
             >
@@ -352,7 +368,7 @@ export default function Semester() {
               icon={FileQuestion}
               message="No question papers uploaded yet."
               sub="Be the first to upload a PYQ for this semester."
-              onUpload={() => setUploadModal({ isOpen: true, type: TAB_PYQS })}
+              onUpload={() => handleUploadClick(TAB_PYQS)}
               uploadLabel="Upload PYQ"
             />
           )}
@@ -373,6 +389,65 @@ export default function Semester() {
           resource={previewResource}
           onClose={() => setPreviewResource(null)}
         />
+      )}
+
+      {/* ── "Semester Not Live" blocking modal ── */}
+      {notLiveModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="not-live-title"
+        >
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setNotLiveModal(false)}
+          />
+
+          {/* Panel */}
+          <div className="relative z-10 w-full max-w-sm rounded-2xl bg-[#151c2e] border border-white/10 shadow-2xl overflow-hidden animate-[fadeInScale_0.2s_ease]">
+            {/* Top accent bar */}
+            <div className="h-1 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+
+            <div className="p-7 flex flex-col items-center text-center gap-4">
+              {/* Icon */}
+              <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+                <Lock size={26} className="text-indigo-400" />
+              </div>
+
+              {/* Text */}
+              <div>
+                <h2 id="not-live-title" className="text-lg font-bold text-white mb-1">
+                  Semester Not Live Yet
+                </h2>
+                <p className="text-textMuted text-sm leading-relaxed">
+                  Uploads are disabled for <span className="text-white font-medium">Semester {semesterNumber}</span>. According to the <span className="text-white font-medium">2024 scheme</span>, no students are enrolled in this semester yet.
+                </p>
+                <p className="text-textMuted text-sm mt-2">
+                  Uploads will be enabled once this semester goes live.
+                </p>
+              </div>
+
+              {/* Action */}
+              <button
+                onClick={() => setNotLiveModal(false)}
+                className="mt-1 w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition-colors"
+              >
+                Got it
+              </button>
+            </div>
+
+            {/* Close icon */}
+            <button
+              onClick={() => setNotLiveModal(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-textMuted hover:text-white hover:bg-white/8 transition-colors"
+              aria-label="Close"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
       )}
     </Layout>
   );

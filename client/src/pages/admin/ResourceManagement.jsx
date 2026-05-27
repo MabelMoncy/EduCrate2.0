@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Loader2, Pin, PinOff, RefreshCw, Search, ServerCrash, Trash2 } from 'lucide-react';
+import { Eye, Loader2, Pin, PinOff, RefreshCw, Search, ServerCrash, Trash2 } from 'lucide-react';
 import { deleteResource, getResources, updateResourcePin } from '../../lib/api';
+import PDFPreviewModal from '../../components/PDFPreviewModal';
 
 export default function ResourceManagement() {
   const [resources, setResources] = useState([]);
@@ -8,6 +9,7 @@ export default function ResourceManagement() {
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [busyId, setBusyId] = useState(null);
+  const [previewResource, setPreviewResource] = useState(null);
 
   const fetchResources = async () => {
     try {
@@ -148,6 +150,14 @@ export default function ResourceManagement() {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             type="button"
+                            onClick={() => setPreviewResource(resource)}
+                            className="rounded-lg bg-indigo-500/10 p-2 text-indigo-300 transition-colors hover:bg-indigo-500/20"
+                            title="Preview"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => handlePinToggle(resource)}
                             disabled={busyId === resource._id}
                             className="rounded-lg bg-amber-500/10 p-2 text-amber-300 transition-colors hover:bg-amber-500/20 disabled:opacity-50"
@@ -180,6 +190,12 @@ export default function ResourceManagement() {
           </div>
         )}
       </div>
+      {previewResource && (
+        <PDFPreviewModal
+          resource={previewResource}
+          onClose={() => setPreviewResource(null)}
+        />
+      )}
     </div>
   );
 }
