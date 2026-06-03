@@ -1,9 +1,12 @@
 import Resource from '../models/Resource.js';
+import AuditLog from '../models/AuditLog.js';
 import cloudinary from '../config/cloudinary.js';
+import { validatePdfMagicBytes } from '../middlewares/uploadMiddleware.js';
+import { scanBuffer } from '../lib/virusScanner.js';
 
 // ── Allowlist constants (mirrors client/src/lib/semesterData.js) ──────────────
 const VALID_SEMESTERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'];
-const VALID_TYPES     = ['notes', 'pyq'];
+const VALID_TYPES = ['notes', 'pyq'];
 
 const SEMESTER_SUBJECTS = {
   S1: [
@@ -149,8 +152,8 @@ const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const buildResourceQuery = ({ semester, isPinned, subject, type, search } = {}) => {
   const query = {};
   if (semester) query.semester = semester;
-  if (subject)  query.subject  = subject;
-  if (type)     query.type     = type;
+  if (subject) query.subject = subject;
+  if (type) query.type = type;
   if (isPinned === 'true' || isPinned === true) query.isPinned = true;
 
   if (search && search.trim()) {
@@ -190,9 +193,9 @@ const uploadToCloudinary = (buffer, folder, publicId) =>
       {
         resource_type: 'raw',   // treat as raw binary — required for PDFs
         folder,
-        public_id:     publicId,
-        format:        'pdf',   // preserve .pdf extension in the URL
-        overwrite:     false,   // never silently replace an existing file
+        public_id: publicId,
+        format: 'pdf',   // preserve .pdf extension in the URL
+        overwrite: false,   // never silently replace an existing file
       },
       (error, result) => {
         if (error) return reject(error);
@@ -307,6 +310,20 @@ const uploadResource = async (req, res, next) => {
       throw new Error('Only PDF files are allowed');
     }
 
+    // ── 5b. Magic byte check — prevents MIME type spoofing (H7) ──────────────
+    if (!validatePdfMagicBytes(file.buffer)) {
+      res.status(400);
+      throw new Error('File content does not match PDF format');
+    }
+
+    // ── 5c. Malware scan (H9) ─────────────────────────────────────────────────
+    try {
+      await scanBuffer(file.buffer);
+    } catch (scanErr) {
+      res.status(400);
+      throw new Error(scanErr.message);
+    }
+
     // ── 6. File size guard ────────────────────────────────────────────────────
     const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
     if (file.size > MAX_BYTES) {
@@ -319,9 +336,9 @@ const uploadResource = async (req, res, next) => {
     // Public ID: <timestamp>_<filename_without_extension>
     // Example:   S4/notes/Operating_Systems/1716000000000_unit3_notes
     const safeSubject = sanitise(subject);
-    const safeName    = sanitise(file.originalname.replace(/\.pdf$/i, ''));
-    const folder      = `educrate/${semester}/${type}/${safeSubject}`;
-    const publicId    = `${Date.now()}_${safeName}`;
+    const safeName = sanitise(file.originalname.replace(/\.pdf$/i, ''));
+    const folder = `educrate/${semester}/${type}/${safeSubject}`;
+    const publicId = `${Date.now()}_${safeName}`;
 
     // ── 8. Upload buffer to Cloudinary ────────────────────────────────────────
     let uploadResult;
@@ -337,16 +354,16 @@ const uploadResource = async (req, res, next) => {
 
     // ── 9. Persist metadata in MongoDB ───────────────────────────────────────
     const resource = await Resource.create({
-      title:              title.trim().substring(0, 200),
-      description:        description.trim().substring(0, 1000),
+      title: title.trim().substring(0, 200),
+      description: description.trim().substring(0, 1000),
       semester,
       subject,
       type,
-      fileUrl:            secure_url,
+      fileUrl: secure_url,
       cloudinaryPublicId, // stored for clean deletes
-      fileType:           'pdf',
-      fileSize:           `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-      uploadedBy:         'anonymous',
+      fileType: 'pdf',
+      fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+      uploadedBy: 'anonymous',
     });
 
     res.status(201).json(resource);
@@ -366,6 +383,14 @@ const deleteResource = async (req, res, next) => {
       res.status(404);
       throw new Error('Resource not found');
     }
+
+    // ── Audit log — record deletion before it executes (H5) ─────────────────────
+    await AuditLog.create({
+      action: 'DELETE',
+      resourceId: resource._id,
+      resourceTitle: resource.title,
+      performedBy: req.user._id,   // set by protectAdmin middleware
+    });
 
     // ── Delete from Cloudinary using the stored public_id ────────────────────
     if (resource.cloudinaryPublicId) {

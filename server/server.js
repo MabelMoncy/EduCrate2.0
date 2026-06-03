@@ -5,9 +5,11 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import mongoSanitize from 'express-mongo-sanitize';
+import cookieParser from 'cookie-parser';
 import connectDB from './config/db.js';
 import apiRoutes from './routes/apiRoutes.js';
 import { notFound, errorHandler } from './middlewares/errorMiddleware.js';
+import { csrfMiddleware } from './middlewares/csrfMiddleware.js';
 
 dotenv.config();
 
@@ -23,6 +25,7 @@ if (process.env.TRUST_PROXY === 'true') {
 
 // Security Middlewares
 app.use(helmet());
+app.use(cookieParser());
 const parseAllowedOrigins = (value = '') =>
   value
     .split(',')
@@ -54,15 +57,18 @@ app.use(
     credentials: true,
   })
 );
-app.use(express.json({ limit: '10mb' })); 
+app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Prevent NoSQL injection by removing prohibited keys from body, params, headers, and query
 app.use(mongoSanitize());
 
+// CSRF double-submit cookie protection (H6)
+app.use(csrfMiddleware);
+
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
+  windowMs: 15 * 60 * 1000,
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,

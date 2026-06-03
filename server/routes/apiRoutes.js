@@ -7,7 +7,7 @@ import {
   deleteResource,
   updateResourcePin,
 } from '../controllers/resourceController.js';
-import { loginAdmin } from '../controllers/authController.js';
+import { loginAdmin, logoutAdmin } from '../controllers/authController.js';
 import { protectAdmin } from '../middlewares/authMiddleware.js';
 import upload from '../middlewares/uploadMiddleware.js';
 
@@ -21,11 +21,21 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+const uploadRateLimit = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 10,                   // 10 upload attempts per IP per window
+  message: 'Too many upload attempts from this IP. Please try again in 10 minutes.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.ip, // explicit per-IP throttling
+});
+
 router.post('/auth/login', loginLimiter, loginAdmin);
+router.post('/auth/logout', logoutAdmin);
 
 router.route('/resources')
   .get(getResources)
-  .post(upload.single('file'), uploadResource);
+  .post(uploadRateLimit, upload.single('file'), uploadResource);
 
 router.route('/resources/:id')
   .delete(protectAdmin, deleteResource);
