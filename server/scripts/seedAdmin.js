@@ -13,6 +13,11 @@ const seedAdmin = async () => {
     throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD are required to seed an admin');
   }
 
+  // L31 — enforce minimum password strength to prevent weak admin credentials
+  if (password.length < 12) {
+    throw new Error('ADMIN_PASSWORD must be at least 12 characters long');
+  }
+
   await connectDB();
 
   const hashedPassword = await bcrypt.hash(password, 12);

@@ -27,6 +27,13 @@ jobs:
       
     - name: Install Client Dependencies
       run: cd client && npm ci
+
+    # L30 — audit both dependency trees for known CVEs on every push/PR
+    - name: Audit Server Dependencies
+      run: cd server && npm audit --audit-level=high
+
+    - name: Audit Client Dependencies
+      run: cd client && npm audit --audit-level=high
       
     - name: Build Client
       run: cd client && npm run build --if-present

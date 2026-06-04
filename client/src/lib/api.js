@@ -1,19 +1,23 @@
 const API_URL = '/api';
-const AUTH_STORAGE_KEY = 'educrate_admin_auth';
 
-const getStoredToken = () => {
-  try {
-    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-    return stored ? JSON.parse(stored)?.token : null;
-  } catch (_error) {
-    return null;
-  }
+/**
+ * Reads the csrf_token from document.cookie.
+ * The csrf_token cookie is set by the server on login (httpOnly: false)
+ * so JavaScript can read it here and echo it as the X-CSRF-Token header.
+ */
+const getCsrfToken = () => {
+  const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : '';
 };
 
-const jsonHeaders = ({ auth = false } = {}) => {
+/**
+ * Builds JSON request headers.
+ * When csrf:true, attaches the X-CSRF-Token header required for state-changing requests.
+ * No longer reads localStorage or attaches Authorization: Bearer — auth is via httpOnly cookie.
+ */
+const jsonHeaders = ({ csrf = false } = {}) => {
   const headers = { 'Content-Type': 'application/json' };
-  const token = getStoredToken();
-  if (auth && token) headers.Authorization = `Bearer ${token}`;
+  if (csrf) headers['X-CSRF-Token'] = getCsrfToken();
   return headers;
 };
 
@@ -35,6 +39,7 @@ export const getResources = async (params = {}) => {
   const response = await fetch(url, {
     method: 'GET',
     headers: jsonHeaders(),
+    credentials: 'include',
   });
 
   if (!response.ok) {
@@ -48,6 +53,8 @@ export const uploadResource = async (formData) => {
   const response = await fetch(`${API_URL}/resources`, {
     method: 'POST',
     // Do NOT set Content-Type — let browser set multipart/form-data with boundary
+    headers: { 'X-CSRF-Token': getCsrfToken() },
+    credentials: 'include',
     body: formData,
   });
 
@@ -61,7 +68,8 @@ export const uploadResource = async (formData) => {
 export const deleteResource = async (id) => {
   const response = await fetch(`${API_URL}/resources/${id}`, {
     method: 'DELETE',
-    headers: jsonHeaders({ auth: true }),
+    headers: jsonHeaders({ csrf: true }),
+    credentials: 'include',
   });
 
   if (!response.ok) {
@@ -74,7 +82,8 @@ export const deleteResource = async (id) => {
 export const updateResourcePin = async (id, isPinned) => {
   const response = await fetch(`${API_URL}/resources/${id}/pin`, {
     method: 'PATCH',
-    headers: jsonHeaders({ auth: true }),
+    headers: jsonHeaders({ csrf: true }),
+    credentials: 'include',
     body: JSON.stringify({ isPinned }),
   });
 
@@ -92,6 +101,7 @@ export const getResourceFileUrl = async (id, { attachment = false } = {}) => {
   const response = await fetch(`${API_URL}/resources/${id}/file-url?${queryParams.toString()}`, {
     method: 'GET',
     headers: jsonHeaders(),
+    credentials: 'include',
   });
 
   if (!response.ok) {
@@ -103,14 +113,24 @@ export const getResourceFileUrl = async (id, { attachment = false } = {}) => {
 
 export const loginAdmin = async (email, password) => {
   const response = await fetch(`${API_URL}/auth/login`, {
-    method:  'POST',
-    headers: jsonHeaders(),
-    body:    JSON.stringify({ email, password }),
+    method:      'POST',
+    headers:     jsonHeaders(),   // no CSRF needed — login route is exempt
+    credentials: 'include',
+    body:        JSON.stringify({ email, password }),
   });
 
   if (!response.ok) {
     throw new Error(await readErrorMessage(response, 'Failed to log in'));
   }
 
+  // Server response is now { user } only — NO token in body (H2)
   return response.json();
+};
+
+export const logoutAdmin = async () => {
+  await fetch(`${API_URL}/auth/logout`, {
+    method:      'POST',
+    headers:     jsonHeaders({ csrf: true }),
+    credentials: 'include',
+  });
 };

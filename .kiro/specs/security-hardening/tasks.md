@@ -157,7 +157,7 @@ This plan fixes the 10 🔴 HIGH severity security vulnerabilities identified in
      GROUP 2 — AUTH MIGRATION  (breaking, must be done atomically)
      ═══════════════════════════════════════════════════════════════════════════ -->
 
-- [ ] 5. Group 2 — Auth migration (H3, H2+H6 server-side, H2+H6 client-side)
+- [x] 5. Group 2 — Auth migration (H3, H2+H6 server-side, H2+H6 client-side)
 
   - [x] 5.1 H3 — Create tokenBlacklist.js and wire JTI into signToken + protectAdmin
     - Create `server/lib/tokenBlacklist.js` exporting `export const tokenBlacklist = new Set()`
@@ -174,7 +174,7 @@ This plan fixes the 10 🔴 HIGH severity security vulnerabilities identified in
     - _Preservation: Tokens not in the blacklist continue to authenticate normally (3.1, 3.2, 3.3)_
     - _Requirements: 1.4, 2.3_
 
-  - [ ] 5.2 H2+H6 — Server: cookie-parser, CSRF middleware, authController login/logout, authMiddleware cookie read
+  - [x] 5.2 H2+H6 — Server: cookie-parser, CSRF middleware, authController login/logout, authMiddleware cookie read
     - Install: `cd server && npm install cookie-parser@1.4.7`
     - In `server/server.js`:
       - Add `import cookieParser from 'cookie-parser'`
@@ -198,7 +198,7 @@ This plan fixes the 10 🔴 HIGH severity security vulnerabilities identified in
     - _Requirements: 1.3, 1.7, 2.2, 2.3_
 
 
-  - [~] 5.3 H2+H6 — Client: remove localStorage token, add credentials:include and CSRF header
+  - [x] 5.3 H2+H6 — Client: remove localStorage token, add credentials:include and CSRF header
     - In `client/src/lib/api.js`:
       - Remove all `localStorage.getItem('educrate_admin_auth')` reads and `Authorization: Bearer` header injection
       - Add helper `getCsrfToken()` that reads from `document.cookie` with regex `/(?:^|;\s*)csrf_token=([^;]+)/`
@@ -219,7 +219,7 @@ This plan fixes the 10 🔴 HIGH severity security vulnerabilities identified in
     - _Preservation: Admin panel still functions; login/logout flows work end-to-end; AdminRoute guard still redirects unauthenticated users (3.12)_
     - _Requirements: 1.3, 1.24, 2.2_
 
-- [~] 6. Group 2 verification — run existing tests, confirm auth migration is complete
+- [x] 6. Group 2 verification — run existing tests, confirm auth migration is complete
   - Run server test suite: `cd server && npm test`
   - Run client test suite: `cd client && npm test -- --run`
   - Manually verify login → cookie set (check DevTools Application → Cookies: `educrate_token` httpOnly, `csrf_token` JS-readable)
@@ -234,9 +234,9 @@ This plan fixes the 10 🔴 HIGH severity security vulnerabilities identified in
      GROUP 3 — ROUTE PROTECTION  (H1 + H4)
      ═══════════════════════════════════════════════════════════════════════════ -->
 
-- [ ] 7. Group 3 — Route protection (H1 + H4)
+- [x] 7. Group 3 — Route protection (H1 + H4)
 
-  - [~] 7.1 H1+H4 — Add protectAdmin to POST /api/resources, GET /api/resources, GET /api/resources/:id/file-url
+  - [x] 7.1 H1+H4 — Add protectAdmin to POST /api/resources, GET /api/resources, GET /api/resources/:id/file-url
     - In `server/routes/apiRoutes.js`, update the `/resources` route chain to:
       ```
       router.route('/resources')
@@ -255,7 +255,7 @@ This plan fixes the 10 🔴 HIGH severity security vulnerabilities identified in
     - _Preservation: Authenticated admin continues to upload resources and list resources successfully (3.3, 3.4, 3.5)_
     - _Requirements: 1.1, 1.5, 2.1_
 
-- [~] 8. Group 3 verification — run existing tests, confirm all 10 HIGH fixes are in place
+- [x] 8. Group 3 verification — run existing tests, confirm all 10 HIGH fixes are in place
   - Run server test suite: `cd server && npm test`
   - Run client test suite: `cd client && npm test -- --run`
   - Confirm `POST /api/resources` without auth cookie returns 401
@@ -269,9 +269,9 @@ This plan fixes the 10 🔴 HIGH severity security vulnerabilities identified in
      FINAL VALIDATION
      ═══════════════════════════════════════════════════════════════════════════ -->
 
-- [ ] 9. Final checkpoint — verify all 10 HIGH fixes and no regressions
+- [x] 9. Final checkpoint — verify all 10 HIGH fixes and no regressions
 
-  - [~] 9.1 Re-run bug condition exploration test from task 1
+  - [x] 9.1 Re-run bug condition exploration test from task 1
     - **Property 1: Expected Behavior** - All 10 HIGH Vulnerabilities Fixed
     - **IMPORTANT**: Re-run the SAME test from task 1 — do NOT write a new test
     - H1: `POST /api/resources` without auth → 401 ✓
@@ -287,14 +287,14 @@ This plan fixes the 10 🔴 HIGH severity security vulnerabilities identified in
     - **EXPECTED OUTCOME**: All 10 assertions PASS (confirms all bugs are fixed)
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6_
 
-  - [~] 9.2 Re-run preservation property tests from task 2
+  - [x] 9.2 Re-run preservation property tests from task 2
     - **Property 2: Preservation** - All 15 Non-Buggy Behaviors Unchanged
     - **IMPORTANT**: Re-run the SAME tests from task 2 — do NOT write new tests
     - All 15 preservation properties (3.1–3.15) must still pass
     - **EXPECTED OUTCOME**: All preservation tests PASS (confirms no regressions)
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.10, 3.11, 3.12, 3.13, 3.14, 3.15_
 
-- [~] 10. Checkpoint — Ensure all tests pass
+- [x] 10. Checkpoint — Ensure all tests pass
   - Run full test suites: `cd server && npm test` and `cd client && npm test -- --run`
   - All 10 bug condition assertions pass (bugs confirmed fixed)
   - All preservation tests pass (no regressions introduced)

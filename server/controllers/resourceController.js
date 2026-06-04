@@ -149,15 +149,27 @@ const SEMESTER_SUBJECTS = {
 
 const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+const SEARCH_MAX_LENGTH = 200; // M13 — prevent catastrophic-backtracking regex via long inputs
+const LIMIT_MAX = 100;         // M14 — prevent full-table dumps via ?limit=1000000
+
+/**
+ * Strips all HTML tags from a string to prevent stored XSS payloads (M16).
+ * React escapes by default, but sanitising at rest is defence-in-depth.
+ */
+const stripHtml = (str) => str.replace(/<[^>]*>/g, '');
+
 const buildResourceQuery = ({ semester, isPinned, subject, type, search } = {}) => {
   const query = {};
   if (semester) query.semester = semester;
   if (subject) query.subject = subject;
   if (type) query.type = type;
-  if (isPinned === 'true' || isPinned === true) query.isPinned = true;
+  // M15 — only accept the exact string 'true'; ignore operator-injection attempts
+  if (isPinned === 'true') query.isPinned = true;
 
   if (search && search.trim()) {
-    const term = escapeRegex(search.trim());
+    // M13 — enforce length cap before constructing any RegExp object
+    const raw = search.trim().substring(0, SEARCH_MAX_LENGTH);
+    const term = escapeRegex(raw);
     const regex = new RegExp(term, 'i');
     query.$or = [
       { title: regex },
@@ -214,7 +226,11 @@ const getResources = async (req, res, next) => {
     const query = buildResourceQuery(req.query);
 
     let resourcesQuery = Resource.find(query).sort({ createdAt: -1 });
-    if (limit) resourcesQuery = resourcesQuery.limit(parseInt(limit, 10));
+    if (limit) {
+      // M14 — cap limit to prevent full-catalogue exfiltration in a single call
+      const parsed = Math.min(parseInt(limit, 10) || LIMIT_MAX, LIMIT_MAX);
+      resourcesQuery = resourcesQuery.limit(parsed);
+    }
 
     const resources = await resourcesQuery;
     res.json(resources);
@@ -336,7 +352,8 @@ const uploadResource = async (req, res, next) => {
     // Public ID: <timestamp>_<filename_without_extension>
     // Example:   S4/notes/Operating_Systems/1716000000000_unit3_notes
     const safeSubject = sanitise(subject);
-    const safeName = sanitise(file.originalname.replace(/\.pdf$/i, ''));
+    // L34 — cap safeName to 100 chars to stay within Cloudinary public_id limits
+    const safeName = sanitise(file.originalname.replace(/\.pdf$/i, '')).substring(0, 100);
     const folder = `educrate/${semester}/${type}/${safeSubject}`;
     const publicId = `${Date.now()}_${safeName}`;
 
@@ -345,17 +362,19 @@ const uploadResource = async (req, res, next) => {
     try {
       uploadResult = await uploadToCloudinary(file.buffer, folder, publicId);
     } catch (cloudErr) {
-      console.error('Cloudinary upload error:', cloudErr);
+      // M21 — log full Cloudinary error internally, never expose it to clients
+      console.error('[Cloudinary] Upload error:', cloudErr);
       res.status(500);
-      throw new Error(`Failed to upload file to Cloudinary: ${cloudErr.message}`);
+      throw new Error('File upload failed. Please try again.');
     }
 
     const { secure_url, public_id: cloudinaryPublicId } = uploadResult;
 
     // ── 9. Persist metadata in MongoDB ───────────────────────────────────────
     const resource = await Resource.create({
-      title: title.trim().substring(0, 200),
-      description: description.trim().substring(0, 1000),
+      // M16 — strip HTML tags before persisting (defence-in-depth against stored XSS)
+      title: stripHtml(title.trim()).substring(0, 200),
+      description: stripHtml(description.trim()).substring(0, 1000),
       semester,
       subject,
       type,

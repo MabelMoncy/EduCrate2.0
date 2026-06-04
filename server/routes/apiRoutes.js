@@ -34,14 +34,14 @@ router.post('/auth/login', loginLimiter, loginAdmin);
 router.post('/auth/logout', logoutAdmin);
 
 router.route('/resources')
-  .get(getResources)
-  .post(uploadRateLimit, upload.single('file'), uploadResource);
+  .get(protectAdmin, getResources)                                          // H4 — unauthenticated GET now returns 401
+  .post(uploadRateLimit, protectAdmin, upload.single('file'), uploadResource); // H8 throttle first, H1 auth guard second
 
 router.route('/resources/:id')
   .delete(protectAdmin, deleteResource);
 
 router.patch('/resources/:id/pin', protectAdmin, updateResourcePin);
-router.get('/resources/:id/file-url', getResourceFileUrl);
+router.get('/resources/:id/file-url', protectAdmin, getResourceFileUrl); // H4 — signed URL endpoint also requires admin auth
 
 // Basic health check route
 router.get('/health', (req, res) => {

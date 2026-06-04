@@ -10,6 +10,7 @@ import connectDB from './config/db.js';
 import apiRoutes from './routes/apiRoutes.js';
 import { notFound, errorHandler } from './middlewares/errorMiddleware.js';
 import { csrfMiddleware } from './middlewares/csrfMiddleware.js';
+import { requireJsonContentType } from './middlewares/contentTypeMiddleware.js';
 
 dotenv.config();
 
@@ -24,7 +25,23 @@ if (process.env.TRUST_PROXY === 'true') {
 }
 
 // Security Middlewares
-app.use(helmet());
+// M17 — explicit Helmet config with Content-Security-Policy for defence-in-depth
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:     ["'self'"],
+      scriptSrc:      ["'self'"],
+      styleSrc:       ["'self'", 'https://fonts.googleapis.com'],
+      fontSrc:        ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc:         ["'self'", 'data:', 'https://res.cloudinary.com'],
+      connectSrc:     ["'self'"],
+      frameSrc:       ["'none'"],
+      objectSrc:      ["'none'"],
+      upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
+    },
+  },
+  crossOriginResourcePolicy: { policy: 'same-site' },
+}));
 app.use(cookieParser());
 const parseAllowedOrigins = (value = '') =>
   value
@@ -57,11 +74,15 @@ app.use(
     credentials: true,
   })
 );
+// M19 — 100kb is plenty for any JSON API payload (login body is <1kb; no endpoint needs 10mb JSON)
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Prevent NoSQL injection by removing prohibited keys from body, params, headers, and query
 app.use(mongoSanitize());
+
+// L32 — reject non-JSON Content-Type on state-changing endpoints (multipart uploads are exempt)
+app.use('/api', requireJsonContentType);
 
 // CSRF double-submit cookie protection (H6)
 app.use(csrfMiddleware);
