@@ -24,13 +24,20 @@ export default function SemesterUploadModal({
   onSuccess,
   semester = 'S4',
   uploadType = 'notes',
+  defaultSubject = '',   // pre-selected subject passed from the folder context
 }) {
   const subjects = getSubjectsForSemester(semester);
+
+  // Use the contextual subject if provided, otherwise fall back to the first in the list
+  const resolveInitialSubject = () =>
+    (defaultSubject && subjects.includes(defaultSubject))
+      ? defaultSubject
+      : (subjects[0] ?? '');
 
   const emptyForm = {
     title: '',
     description: '',
-    subject: subjects[0] ?? '',
+    subject: resolveInitialSubject(),
     file: null,
   };
 
@@ -39,15 +46,15 @@ export default function SemesterUploadModal({
   const [error, setError] = useState(null);
   const [dragOver, setDragOver] = useState(false);
 
-  // Reset form whenever modal is opened
+  // Reset form whenever the modal opens or the context changes
   useEffect(() => {
     if (isOpen) {
-      setFormData({ ...emptyForm, subject: subjects[0] ?? '' });
+      setFormData({ ...emptyForm, subject: resolveInitialSubject() });
       setError(null);
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, semester]);
+  }, [isOpen, semester, defaultSubject]);
 
   if (!isOpen) return null;
 
@@ -101,10 +108,6 @@ export default function SemesterUploadModal({
     }
     if (!formData.title.trim()) {
       setError('Title is required.');
-      return;
-    }
-    if (!formData.description.trim()) {
-      setError('Description is required.');
       return;
     }
     if (!formData.subject) {
@@ -263,12 +266,12 @@ export default function SemesterUploadModal({
                 htmlFor="sem-description"
                 className="block text-sm font-medium text-gray-300 mb-1.5"
               >
-                Description <span className="text-red-400">*</span>
+                Description
+                <span className="ml-1.5 text-xs text-textMuted font-normal">(optional)</span>
               </label>
               <textarea
                 id="sem-description"
                 name="description"
-                required
                 maxLength={1000}
                 rows={3}
                 value={formData.description}

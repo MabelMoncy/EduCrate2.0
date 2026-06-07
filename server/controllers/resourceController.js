@@ -219,7 +219,7 @@ const uploadToCloudinary = (buffer, folder, publicId) =>
 
 // ── @desc    Get resources (supports filtering by semester, type, subject) ────
 // ── @route   GET /api/resources                                            ────
-// ── @access  Public                                                        ────
+// ── @access  Public metadata                                                ────
 const getResources = async (req, res, next) => {
   try {
     const { limit } = req.query;
@@ -241,7 +241,7 @@ const getResources = async (req, res, next) => {
 
 // ── @desc    Get a signed Cloudinary URL for a PDF resource                  ────
 // ── @route   GET /api/resources/:id/file-url                                ────
-// ── @access  Public                                                        ────
+// ── @access  Authenticated admin or Firebase user                           ────
 const getResourceFileUrl = async (req, res, next) => {
   try {
     const resource = await Resource.findById(req.params.id);
@@ -277,7 +277,7 @@ const getResourceFileUrl = async (req, res, next) => {
 
 // ── @desc    Upload a new resource                                          ────
 // ── @route   POST /api/resources                                           ────
-// ── @access  Public                                                        ────
+// ── @access  Authenticated admin or Firebase user                           ────
 const uploadResource = async (req, res, next) => {
   try {
     const { title, description, semester, subject } = req.body;
@@ -293,10 +293,7 @@ const uploadResource = async (req, res, next) => {
       res.status(400);
       throw new Error('Title is required');
     }
-    if (!description || !description.trim()) {
-      res.status(400);
-      throw new Error('Description is required');
-    }
+    // description is optional — no validation needed
 
     // ── 2. Semester allowlist validation ─────────────────────────────────────
     if (!semester || !VALID_SEMESTERS.includes(semester)) {
@@ -374,7 +371,7 @@ const uploadResource = async (req, res, next) => {
     const resource = await Resource.create({
       // M16 — strip HTML tags before persisting (defence-in-depth against stored XSS)
       title: stripHtml(title.trim()).substring(0, 200),
-      description: stripHtml(description.trim()).substring(0, 1000),
+      description: description ? stripHtml(description.trim()).substring(0, 1000) : '',
       semester,
       subject,
       type,
@@ -382,7 +379,7 @@ const uploadResource = async (req, res, next) => {
       cloudinaryPublicId, // stored for clean deletes
       fileType: 'pdf',
       fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-      uploadedBy: 'anonymous',
+      uploadedBy: req.firebaseUser?.uid || req.user?._id?.toString() || 'authenticated',
     });
 
     res.status(201).json(resource);
@@ -393,7 +390,7 @@ const uploadResource = async (req, res, next) => {
 
 // ── @desc    Delete a resource                                              ────
 // ── @route   DELETE /api/resources/:id                                     ────
-// ── @access  Public                                                        ────
+// ── @access  Admin                                                         ────
 const deleteResource = async (req, res, next) => {
   try {
     const resource = await Resource.findById(req.params.id);
@@ -414,13 +411,35 @@ const deleteResource = async (req, res, next) => {
     // ── Delete from Cloudinary using the stored public_id ────────────────────
     if (resource.cloudinaryPublicId) {
       try {
-        await cloudinary.uploader.destroy(resource.cloudinaryPublicId, {
-          resource_type: 'raw', // must match what was used during upload
+        const publicId = resource.cloudinaryPublicId;
+        console.log('[Delete] Attempting Cloudinary destroy, publicId:', publicId);
+
+        // PDFs uploaded with resource_type:'raw' + format:'pdf' have their
+        // public_id returned WITH the .pdf extension by Cloudinary.
+        // destroy() also needs resource_type:'raw' to target the same asset.
+        let destroyResult = await cloudinary.uploader.destroy(publicId, {
+          resource_type: 'raw',
         });
+        console.log('[Delete] Cloudinary destroy result:', destroyResult);
+
+        // If not found, try stripping the .pdf extension (legacy records)
+        if (destroyResult.result === 'not found' && publicId.endsWith('.pdf')) {
+          const idWithoutExt = publicId.slice(0, -4);
+          console.log('[Delete] Retrying without .pdf extension:', idWithoutExt);
+          destroyResult = await cloudinary.uploader.destroy(idWithoutExt, {
+            resource_type: 'raw',
+          });
+          console.log('[Delete] Retry result:', destroyResult);
+        }
+
+        if (destroyResult.result !== 'ok') {
+          console.warn('[Delete] Cloudinary asset may not have been removed:', destroyResult);
+        }
       } catch (cloudErr) {
-        // Log but do not block DB deletion — the record must still be removed.
-        console.error('Cloudinary delete error:', cloudErr.message);
+        console.error('[Delete] Cloudinary delete error:', cloudErr.message);
       }
+    } else {
+      console.warn('[Delete] No cloudinaryPublicId stored for resource:', resource._id);
     }
 
     await Resource.findByIdAndDelete(req.params.id);
@@ -432,7 +451,7 @@ const deleteResource = async (req, res, next) => {
 
 // ── @desc    Pin or unpin a resource                                       ────
 // ── @route   PATCH /api/resources/:id/pin                                  ────
-// ── @access  Public                                                        ────
+// ── @access  Admin                                                         ────
 const updateResourcePin = async (req, res, next) => {
   try {
     const { isPinned } = req.body;

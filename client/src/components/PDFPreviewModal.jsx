@@ -1,17 +1,24 @@
 import React, { useState } from 'react';
 import { X, Download, ExternalLink, FileText, Loader2 } from 'lucide-react';
 import { getResourceFileUrl } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 
 const googlePdfViewerUrl = (fileUrl) =>
   `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}`;
 
 export default function PDFPreviewModal({ resource, onClose }) {
+  const { isSignedIn, openSignInPrompt } = useAuth();
   const [loadingAction, setLoadingAction] = useState(null);
   const [error, setError] = useState('');
 
   if (!resource) return null;
 
   const openSignedUrl = async (action) => {
+    if (!isSignedIn) {
+      openSignInPrompt({ reason: action === 'download' ? 'download' : 'preview' });
+      return;
+    }
+
     setError('');
     setLoadingAction(action);
 
@@ -37,9 +44,6 @@ export default function PDFPreviewModal({ resource, onClose }) {
       setLoadingAction(null);
     }
   };
-
-  const ActionIcon = ({ action }) =>
-    loadingAction === action ? <Loader2 size={17} className="animate-spin" /> : <ExternalLink size={17} />;
 
   return (
     <div
@@ -80,37 +84,27 @@ export default function PDFPreviewModal({ resource, onClose }) {
             </p>
           )}
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <div className="mt-6 flex flex-col gap-3">
             <button
               type="button"
               onClick={() => openSignedUrl('google')}
               disabled={!!loadingAction}
               className="flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-primaryHover disabled:cursor-not-allowed disabled:opacity-70"
             >
-              <ActionIcon action="google" />
-              Google Viewer
+              {loadingAction === 'google' ? <Loader2 size={17} className="animate-spin" /> : <ExternalLink size={17} />}
+              Open in Drive
             </button>
 
             <button
               type="button"
-              onClick={() => openSignedUrl('native')}
+              onClick={() => openSignedUrl('download')}
               disabled={!!loadingAction}
-              className="flex items-center justify-center gap-2 rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-70"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/5 px-4 py-3 text-sm font-semibold text-gray-300 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
             >
-              <ActionIcon action="native" />
-              Native Viewer
+              {loadingAction === 'download' ? <Loader2 size={17} className="animate-spin" /> : <Download size={17} />}
+              Download PDF
             </button>
           </div>
-
-          <button
-            type="button"
-            onClick={() => openSignedUrl('download')}
-            disabled={!!loadingAction}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white/5 px-4 py-3 text-sm font-semibold text-gray-300 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
-          >
-            {loadingAction === 'download' ? <Loader2 size={17} className="animate-spin" /> : <Download size={17} />}
-            Download PDF
-          </button>
         </div>
       </div>
     </div>

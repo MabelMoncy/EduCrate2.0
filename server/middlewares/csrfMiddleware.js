@@ -17,6 +17,7 @@ export const csrfMiddleware = (req, res, next) => {
     const STATE_CHANGING_METHODS = ['POST', 'PATCH', 'PUT', 'DELETE'];
     // Login route has no session yet — exempt from CSRF check
     const CSRF_EXEMPT_PATHS = ['/api/auth/login'];
+    const authHeader = req.headers.authorization || '';
 
     if (!STATE_CHANGING_METHODS.includes(req.method)) {
         return next();
@@ -24,6 +25,13 @@ export const csrfMiddleware = (req, res, next) => {
 
     // Exact path match for exempt routes
     if (CSRF_EXEMPT_PATHS.includes(req.path)) {
+        return next();
+    }
+
+    // Firebase users authenticate with an explicit bearer token header, not
+    // ambient browser cookies. CSRF targets ambient credentials, so bearer-token
+    // requests are handled by token verification at the protected route.
+    if (/^Bearer\s+.+/i.test(authHeader)) {
         return next();
     }
 

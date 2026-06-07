@@ -11,6 +11,7 @@ import ResourceManagement from './pages/admin/ResourceManagement';
 import SubjectConfiguration from './pages/admin/SubjectConfiguration';
 import { useAuth } from './context/AuthContext';
 import SplashScreen from './components/SplashScreen';
+import SignInPrompt from './components/SignInPrompt';
 
 function AdminRoute({ children }) {
   const location = useLocation();
@@ -24,6 +25,7 @@ function AdminRoute({ children }) {
 }
 
 function App() {
+  const { isSignedIn, openSignInPrompt } = useAuth();
   // Show splash once per session; subsequent navigations skip it.
   const [splashDone, setSplashDone] = useState(
     () => sessionStorage.getItem('splashShown') === 'true'
@@ -32,6 +34,9 @@ function App() {
   const handleSplashFinish = () => {
     sessionStorage.setItem('splashShown', 'true');
     setSplashDone(true);
+    if (!isSignedIn) {
+      openSignInPrompt({ reason: 'welcome' });
+    }
   };
 
   return (
@@ -59,9 +64,9 @@ function App() {
           </Routes>
         </Router>
       )}
+      <SignInPrompt />
     </ErrorBoundary>
   );
 }
 
 export default App;
-

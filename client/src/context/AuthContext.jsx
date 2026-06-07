@@ -1,5 +1,11 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
-import { logoutAdmin as logoutApi } from '../lib/api.js';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
+} from 'firebase/auth';
+import { logoutAdmin as logoutApi, setAuthTokenProvider } from '../lib/api.js';
+import { firebaseAuth, googleProvider, isFirebaseConfigured } from '../lib/firebase.js';
 
 const AUTH_STORAGE_KEY = 'educrate_admin_auth';
 
@@ -21,6 +27,31 @@ const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [auth, setAuth] = useState(() => readStoredAuth());
+  const [firebaseUser, setFirebaseUser] = useState(null);
+  const [firebaseLoading, setFirebaseLoading] = useState(isFirebaseConfigured);
+  const [signInPrompt, setSignInPrompt] = useState({
+    isOpen: false,
+    reason: 'default',
+    afterSignIn: null,
+  });
+
+  useEffect(() => {
+    if (!firebaseAuth) {
+      setAuthTokenProvider(null);
+      setFirebaseLoading(false);
+      return undefined;
+    }
+
+    setAuthTokenProvider(async () => {
+      const currentUser = firebaseAuth.currentUser;
+      return currentUser ? currentUser.getIdToken() : '';
+    });
+
+    return onAuthStateChanged(firebaseAuth, (user) => {
+      setFirebaseUser(user);
+      setFirebaseLoading(false);
+    });
+  }, []);
 
   /**
    * Called after a successful login.
@@ -42,16 +73,62 @@ export const AuthProvider = ({ children }) => {
     } catch (_e) {
       // If the server call fails, still clear client state
     }
+    try {
+      if (firebaseAuth?.currentUser) {
+        await signOut(firebaseAuth);
+      }
+    } catch (_e) {
+      // Client state is still cleared below; Firebase will refresh on next load.
+    }
     sessionStorage.removeItem(AUTH_STORAGE_KEY);
     setAuth(null);
   };
 
+  const openSignInPrompt = ({ reason = 'default', afterSignIn = null } = {}) => {
+    setSignInPrompt({
+      isOpen: true,
+      reason,
+      afterSignIn,
+    });
+  };
+
+  const closeSignInPrompt = () => {
+    setSignInPrompt(prev => ({
+      ...prev,
+      isOpen: false,
+      afterSignIn: null,
+    }));
+  };
+
+  const signInWithGoogle = async () => {
+    if (!firebaseAuth || !googleProvider) {
+      throw new Error('Firebase authentication is not configured.');
+    }
+    const result = await signInWithPopup(firebaseAuth, googleProvider);
+    const nextAction = signInPrompt.afterSignIn;
+    closeSignInPrompt();
+
+    if (typeof nextAction === 'function') {
+      window.setTimeout(() => nextAction(result.user), 0);
+    }
+
+    return result;
+  };
+
   const value = useMemo(() => ({
-    user:    auth?.user || null,
+    user: auth?.user || null,
     isAdmin: auth?.user?.role === 'admin',
+    firebaseUser,
+    firebaseLoading,
+    isFirebaseConfigured,
+    isSignedIn: !!auth?.user || !!firebaseUser,
+    signInPrompt,
+    openSignInPrompt,
+    closeSignInPrompt,
     login,
     logout,
-  }), [auth]);
+    signInWithGoogle,
+  }), [auth, firebaseLoading, firebaseUser, signInPrompt]);
 
   return (
     <AuthContext.Provider value={value}>

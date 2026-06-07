@@ -11,11 +11,13 @@ import apiRoutes from './routes/apiRoutes.js';
 import { notFound, errorHandler } from './middlewares/errorMiddleware.js';
 import { csrfMiddleware } from './middlewares/csrfMiddleware.js';
 import { requireJsonContentType } from './middlewares/contentTypeMiddleware.js';
+import { initFirebaseAdmin } from './lib/firebaseAdmin.js';
 
 dotenv.config();
 
 // Connect Database
 connectDB();
+initFirebaseAdmin();
 
 const app = express();
 
@@ -88,13 +90,28 @@ app.use('/api', requireJsonContentType);
 app.use(csrfMiddleware);
 
 // Rate limiting
+// Global limiter — generous in dev (hot-reloads + double-fetch on every page)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: process.env.NODE_ENV === 'development' ? 1000 : 300,
   standardHeaders: true,
   legacyHeaders: false,
+  message: { message: 'Too many requests, please try again later.' },
 });
 app.use('/api', limiter);
+
+// Stricter limiter for uploads only
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many uploads, please wait before trying again.' },
+});
+app.use('/api/resources', (req, res, next) => {
+  if (req.method === 'POST') return uploadLimiter(req, res, next);
+  next();
+});
 
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));

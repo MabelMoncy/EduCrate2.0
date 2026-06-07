@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { getResources, getResourceFileUrl } from '../lib/api';
 import { getSubjectsForSemester } from '../lib/semesterData';
+import { useAuth } from '../context/AuthContext';
 
 // ── Tab constants ──────────────────────────────────────────────────────────────
 const TAB_NOTES = 'notes';
@@ -29,6 +30,7 @@ const TAB_PYQS = 'pyq';
 export default function Semester() {
   const { id } = useParams();           // e.g. 'S4'
   const navigate = useNavigate();
+  const { isSignedIn, openSignInPrompt } = useAuth();
 
   const semesterNumber = id ? id.replace('S', '') : '';
   const subjects = getSubjectsForSemester(id);
@@ -49,6 +51,7 @@ export default function Semester() {
   const [uploadModal, setUploadModal] = useState({
     isOpen: false,
     type: TAB_NOTES,
+    subject: '',   // pre-selected subject when opened from a specific folder
   });
   const [notLiveModal, setNotLiveModal] = useState(false);
 
@@ -102,7 +105,20 @@ export default function Semester() {
     setOpenFolders(prev => ({ ...prev, [subject]: !prev[subject] }));
   };
 
+  const handlePreview = (resource) => {
+    if (!isSignedIn) {
+      openSignInPrompt({ reason: 'preview' });
+      return;
+    }
+    setPreviewResource(resource);
+  };
+
   const handleDownload = async (resource) => {
+    if (!isSignedIn) {
+      openSignInPrompt({ reason: 'download' });
+      return;
+    }
+
     const nextTab = window.open('', '_blank');
     if (nextTab) nextTab.opener = null;
 
@@ -120,12 +136,17 @@ export default function Semester() {
     }
   };
 
-  // ── Upload handler — intercepts blocked semesters ──────────────────────────
-  const handleUploadClick = (type) => {
+  // subject is optional — passed when clicking upload from inside a specific subject folder
+  const handleUploadClick = (type, subject = '') => {
     if (!uploadAllowed) {
       setNotLiveModal(true);
+    } else if (!isSignedIn) {
+      openSignInPrompt({
+        reason: 'upload',
+        afterSignIn: () => setUploadModal({ isOpen: true, type, subject }),
+      });
     } else {
-      setUploadModal({ isOpen: true, type });
+      setUploadModal({ isOpen: true, type, subject });
     }
   };
 
@@ -159,7 +180,7 @@ export default function Semester() {
       {/* Actions */}
       <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
         <button
-          onClick={() => setPreviewResource(item)}
+          onClick={() => handlePreview(item)}
           className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors"
           title="Preview PDF"
         >
@@ -217,7 +238,7 @@ export default function Semester() {
                 <FileText className="text-textMuted opacity-25" size={36} />
                 <p className="text-sm text-textMuted">No notes uploaded yet for this subject.</p>
                 <button
-                  onClick={() => handleUploadClick(TAB_NOTES)}
+                  onClick={() => handleUploadClick(TAB_NOTES, subject)}
                   className="mt-1 text-xs text-primary hover:underline"
                 >
                   Upload the first one →
@@ -319,7 +340,7 @@ export default function Semester() {
             /* Fallback flat list for semesters without subject config */
             <FlatNotesList
               items={Object.values(notes).flat()}
-              onPreview={setPreviewResource}
+              onPreview={handlePreview}
               onDownload={handleDownload}
               onUpload={() => handleUploadClick(TAB_NOTES)}
             />
@@ -358,7 +379,7 @@ export default function Semester() {
                 <PyqCard
                   key={item._id || i}
                   item={item}
-                  onPreview={setPreviewResource}
+                  onPreview={handlePreview}
                   onDownload={handleDownload}
                 />
               ))}
@@ -382,6 +403,7 @@ export default function Semester() {
         onSuccess={handleUploadSuccess}
         semester={id}
         uploadType={uploadModal.type}
+        defaultSubject={uploadModal.subject}
       />
 
       {previewResource && (

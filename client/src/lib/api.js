@@ -1,4 +1,16 @@
-const API_URL = '/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
+
+let authTokenProvider = null;
+
+export const setAuthTokenProvider = (provider) => {
+  authTokenProvider = provider;
+};
+
+const authHeaders = async () => {
+  if (!authTokenProvider) return {};
+  const token = await authTokenProvider();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
 
 /**
  * Reads the csrf_token from document.cookie.
@@ -15,9 +27,10 @@ const getCsrfToken = () => {
  * When csrf:true, attaches the X-CSRF-Token header required for state-changing requests.
  * No longer reads localStorage or attaches Authorization: Bearer — auth is via httpOnly cookie.
  */
-const jsonHeaders = ({ csrf = false } = {}) => {
+const jsonHeaders = async ({ csrf = false, auth = true } = {}) => {
   const headers = { 'Content-Type': 'application/json' };
   if (csrf) headers['X-CSRF-Token'] = getCsrfToken();
+  if (auth) Object.assign(headers, await authHeaders());
   return headers;
 };
 
@@ -38,7 +51,7 @@ export const getResources = async (params = {}) => {
 
   const response = await fetch(url, {
     method: 'GET',
-    headers: jsonHeaders(),
+    headers: await jsonHeaders(),
     credentials: 'include',
   });
 
@@ -53,7 +66,10 @@ export const uploadResource = async (formData) => {
   const response = await fetch(`${API_URL}/resources`, {
     method: 'POST',
     // Do NOT set Content-Type — let browser set multipart/form-data with boundary
-    headers: { 'X-CSRF-Token': getCsrfToken() },
+    headers: {
+      'X-CSRF-Token': getCsrfToken(),
+      ...(await authHeaders()),
+    },
     credentials: 'include',
     body: formData,
   });
@@ -68,7 +84,7 @@ export const uploadResource = async (formData) => {
 export const deleteResource = async (id) => {
   const response = await fetch(`${API_URL}/resources/${id}`, {
     method: 'DELETE',
-    headers: jsonHeaders({ csrf: true }),
+    headers: await jsonHeaders({ csrf: true, auth: false }),
     credentials: 'include',
   });
 
@@ -82,7 +98,7 @@ export const deleteResource = async (id) => {
 export const updateResourcePin = async (id, isPinned) => {
   const response = await fetch(`${API_URL}/resources/${id}/pin`, {
     method: 'PATCH',
-    headers: jsonHeaders({ csrf: true }),
+    headers: await jsonHeaders({ csrf: true, auth: false }),
     credentials: 'include',
     body: JSON.stringify({ isPinned }),
   });
@@ -100,7 +116,7 @@ export const getResourceFileUrl = async (id, { attachment = false } = {}) => {
 
   const response = await fetch(`${API_URL}/resources/${id}/file-url?${queryParams.toString()}`, {
     method: 'GET',
-    headers: jsonHeaders(),
+    headers: await jsonHeaders(),
     credentials: 'include',
   });
 
@@ -114,7 +130,7 @@ export const getResourceFileUrl = async (id, { attachment = false } = {}) => {
 export const loginAdmin = async (email, password) => {
   const response = await fetch(`${API_URL}/auth/login`, {
     method:      'POST',
-    headers:     jsonHeaders(),   // no CSRF needed — login route is exempt
+    headers:     await jsonHeaders({ auth: false }),   // no CSRF needed — login route is exempt
     credentials: 'include',
     body:        JSON.stringify({ email, password }),
   });
@@ -130,7 +146,7 @@ export const loginAdmin = async (email, password) => {
 export const logoutAdmin = async () => {
   await fetch(`${API_URL}/auth/logout`, {
     method:      'POST',
-    headers:     jsonHeaders({ csrf: true }),
+    headers:     await jsonHeaders({ csrf: true, auth: false }),
     credentials: 'include',
   });
 };

@@ -2,17 +2,18 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import PDFPreviewModal from '../components/PDFPreviewModal';
-import { FileText, Lock, Eye, Loader2 } from 'lucide-react';
+import { FileText, Eye, Loader2 } from 'lucide-react';
 import { getResources, getResourceFileUrl } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { isSignedIn, openSignInPrompt } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const searchTerm = searchParams.get('q') || '';
   const showAll = searchParams.get('view') === 'all' || !!searchTerm;
   
   const [recentResources, setRecentResources] = useState([]);
-  const [departmentPapers, setDepartmentPapers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [previewResource, setPreviewResource] = useState(null);
   
@@ -36,9 +37,6 @@ export default function Dashboard() {
         ...(searchTerm ? { search: searchTerm } : {}),
       });
       setRecentResources(recents);
-
-      const papers = await getResources({ limit: 3, isPinned: true });
-      setDepartmentPapers(papers.length > 0 ? papers : recents);
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
     } finally {
@@ -67,22 +65,15 @@ export default function Dashboard() {
     setSearchParams(nextParams);
   };
 
-  const handleOpenPaper = async (paper) => {
-    const nextTab = window.open('', '_blank');
-    if (nextTab) nextTab.opener = null;
-
-    try {
-      const { url } = await getResourceFileUrl(paper._id);
-      if (nextTab) {
-        nextTab.location.href = url;
-      } else {
-        window.location.href = url;
-      }
-    } catch (error) {
-      if (nextTab) nextTab.close();
-      alert(error.message || 'Failed to open paper.');
+  const handlePreviewResource = (resource) => {
+    if (!isSignedIn) {
+      openSignInPrompt({ reason: 'preview' });
+      return;
     }
+    setPreviewResource(resource);
   };
+
+
 
   return (
     <Layout>
@@ -159,12 +150,12 @@ export default function Dashboard() {
                       <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${i % 3 === 0 ? 'bg-red-400/10 text-red-400' : i % 3 === 1 ? 'bg-blue-400/10 text-blue-400' : 'bg-green-400/10 text-green-400'}`}>
                         <FileText size={18} />
                       </div>
-                      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setPreviewResource(item)}>
+                      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handlePreviewResource(item)}>
                         <h4 className="text-sm font-medium text-white truncate">{item.title}</h4>
                         <p className="text-xs text-textMuted truncate">{item.subject} • {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Recently'}</p>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setPreviewResource(item)} className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors" title="Preview">
+                        <button onClick={() => handlePreviewResource(item)} className="p-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors" title="Preview">
                           <Eye size={14} />
                         </button>
                       </div>
@@ -177,31 +168,6 @@ export default function Dashboard() {
             </div>
             
           </div>
-
-          <div>
-            <div className="flex items-center gap-4 mb-6">
-              <h3 className="text-2xl font-semibold text-white">Department Papers</h3>
-              <div className="h-px bg-white/5 flex-1"></div>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {loading ? (
-                <p className="text-textMuted text-sm">Loading papers...</p>
-              ) : departmentPapers.length > 0 ? (
-                departmentPapers.map((paper, idx) => (
-                  <div key={paper._id || idx} className="h-48 rounded-xl bg-surface border border-white/5 overflow-hidden relative group cursor-pointer" onClick={() => handleOpenPaper(paper)}>
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0f1523] via-[#0f1523]/80 to-transparent z-10"></div>
-                    <div className="absolute bottom-0 left-0 p-5 z-20">
-                      <h4 className="text-lg font-bold text-white mb-1 line-clamp-1">{paper.title}</h4>
-                      <p className="text-sm text-gray-300 line-clamp-2">{paper.description || 'Department resource document.'}</p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <p className="text-textMuted text-sm">No department papers found.</p>
-              )}
-            </div>
-      </div>
 
       {previewResource && (
         <PDFPreviewModal

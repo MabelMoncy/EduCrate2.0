@@ -9,6 +9,7 @@ import {
 } from '../controllers/resourceController.js';
 import { loginAdmin, logoutAdmin } from '../controllers/authController.js';
 import { protectAdmin } from '../middlewares/authMiddleware.js';
+import { protectAdminOrUser } from '../middlewares/protectUser.js';
 import upload from '../middlewares/uploadMiddleware.js';
 
 const router = express.Router();
@@ -34,14 +35,14 @@ router.post('/auth/login', loginLimiter, loginAdmin);
 router.post('/auth/logout', logoutAdmin);
 
 router.route('/resources')
-  .get(protectAdmin, getResources)                                          // H4 — unauthenticated GET now returns 401
-  .post(uploadRateLimit, protectAdmin, upload.single('file'), uploadResource); // H8 throttle first, H1 auth guard second
+  .get(getResources)                                                          // public catalogue metadata; files still require auth
+  .post(uploadRateLimit, protectAdminOrUser, upload.single('file'), uploadResource); // H1/H8 — authenticated upload with rate limit
 
 router.route('/resources/:id')
   .delete(protectAdmin, deleteResource);
 
 router.patch('/resources/:id/pin', protectAdmin, updateResourcePin);
-router.get('/resources/:id/file-url', protectAdmin, getResourceFileUrl); // H4 — signed URL endpoint also requires admin auth
+router.get('/resources/:id/file-url', protectAdminOrUser, getResourceFileUrl); // signed file URLs require authentication
 
 // Basic health check route
 router.get('/health', (req, res) => {
