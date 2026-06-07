@@ -129,10 +129,10 @@ export const getResourceFileUrl = async (id, { attachment = false } = {}) => {
 
 export const loginAdmin = async (email, password) => {
   const response = await fetch(`${API_URL}/auth/login`, {
-    method:      'POST',
-    headers:     await jsonHeaders({ auth: false }),   // no CSRF needed — login route is exempt
+    method: 'POST',
+    headers: await jsonHeaders({ auth: false }),   // no CSRF needed — login route is exempt
     credentials: 'include',
-    body:        JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password }),
   });
 
   if (!response.ok) {
@@ -145,8 +145,8 @@ export const loginAdmin = async (email, password) => {
 
 export const logoutAdmin = async () => {
   await fetch(`${API_URL}/auth/logout`, {
-    method:      'POST',
-    headers:     await jsonHeaders({ csrf: true, auth: false }),
+    method: 'POST',
+    headers: await jsonHeaders({ csrf: true, auth: false }),
     credentials: 'include',
   });
 };

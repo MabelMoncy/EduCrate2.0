@@ -39,8 +39,8 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           <button
             onClick={() => handleNav('/')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${isHome
-                ? 'bg-[#171c2c] text-primary border-l-2 border-primary rounded-r-lg'
-                : 'text-textMuted hover:bg-white/5'
+              ? 'bg-[#171c2c] text-primary border-l-2 border-primary rounded-r-lg'
+              : 'text-textMuted hover:bg-white/5'
               }`}
           >
             <LayoutDashboard size={20} />
@@ -58,8 +58,8 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           <button
             onClick={() => handleNav('/about')}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${isAbout
-                ? 'bg-[#171c2c] text-primary border-l-2 border-primary rounded-r-lg'
-                : 'text-textMuted hover:bg-white/5'
+              ? 'bg-[#171c2c] text-primary border-l-2 border-primary rounded-r-lg'
+              : 'text-textMuted hover:bg-white/5'
               }`}
           >
             <Info size={20} />
