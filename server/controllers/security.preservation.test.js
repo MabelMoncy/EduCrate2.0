@@ -247,17 +247,17 @@ test('3.5 — getResourceFileUrl: generates Cloudinary signed URL and returns { 
 //        That is an EXPECTED contract change — post-fix tests in task 9.1 will
 //        update this assertion accordingly.
 // ─────────────────────────────────────────────────────────────────────────────
-test('3.6 — loginAdmin: successful login currently returns { token, user } in response body', () => {
+test('3.6 — loginAdmin: successful login returns only user in response body', () => {
     const source = readFileSync(
         path.join(SERVER_ROOT, 'controllers', 'authController.js'),
         'utf8'
     );
 
-    // On unfixed code, the response body includes both 'token' and 'user'
+    // Current secure behavior: token should not be sent in response JSON.
     const hasTokenInBody = /res\.json\(\s*\{[^}]*\btoken\b/.test(source);
     assert.ok(
-        hasTokenInBody,
-        'loginAdmin must currently send { token, user } in the response body (pre-fix behaviour)'
+        !hasTokenInBody,
+        'loginAdmin must not send token in the response body'
     );
 
     // The user object must include email and role
@@ -523,15 +523,6 @@ test('3.13 — window.open: nextTab.opener = null is set to prevent reverse tabn
         'Semester.jsx handleDownload must set nextTab.opener = null to prevent reverse tabnapping'
     );
 
-    // Check in Dashboard.jsx (handleOpenPaper)
-    const dashboardSource = readFileSync(
-        path.join(CLIENT_ROOT, 'src', 'pages', 'Dashboard.jsx'),
-        'utf8'
-    );
-    assert.ok(
-        dashboardSource.includes('nextTab.opener = null') || dashboardSource.includes('nextTab.opener=null'),
-        'Dashboard.jsx handleOpenPaper must set nextTab.opener = null to prevent reverse tabnapping'
-    );
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

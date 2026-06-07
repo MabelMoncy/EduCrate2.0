@@ -158,7 +158,7 @@ export default function FeedbackModal({ isOpen, onClose }) {
             <div>
               <h2 className="text-lg font-bold text-white mb-1">Feedback Sent!</h2>
               <p className="text-sm text-textMuted leading-relaxed max-w-xs">
-                Thanks for reaching out. We'll review your message and get back to you soon.
+                Thanks for reaching out. We&apos;ll review your message and get back to you soon.
               </p>
             </div>
             <button
@@ -191,7 +191,7 @@ export default function FeedbackModal({ isOpen, onClose }) {
             </div>
             <div>
               <h2 className="text-sm font-bold text-white">Support & Feedback</h2>
-              <p className="text-[11px] text-textMuted">We'd love to hear from you</p>
+              <p className="text-[11px] text-textMuted">We&apos;d love to hear from you</p>
             </div>
           </div>
           <button

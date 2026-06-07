@@ -4,12 +4,14 @@ import { getSubjectsForSemester, VALID_SEMESTERS } from './semesterData.js';
 
 test('configured semesters return subject lists', () => {
   assert.ok(getSubjectsForSemester('S1').length > 0);
-  assert.ok(getSubjectsForSemester('S4').includes('Operating Systems'));
+  assert.ok(
+    getSubjectsForSemester('S4').some((subject) => subject.includes('Operating Systems')),
+  );
 });
 
-test('S5-S8 are valid but open for custom subjects', () => {
+test('S5-S8 are valid and have configured subjects', () => {
   for (const semester of ['S5', 'S6', 'S7', 'S8']) {
     assert.ok(VALID_SEMESTERS.includes(semester));
-    assert.deepEqual(getSubjectsForSemester(semester), []);
+    assert.ok(getSubjectsForSemester(semester).length > 0);
   }
 });
