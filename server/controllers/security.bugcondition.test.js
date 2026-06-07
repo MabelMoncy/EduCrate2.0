@@ -59,7 +59,7 @@ test('H1 — POST /api/resources: protectAdmin middleware is MISSING from the ro
     assert.ok(
         postRouteSection.includes('protectAdminOrUser') || postRouteSection.includes('protectAdmin'),
         [
-            'COUNTEREXAMPLE (H1): POST /api/resources has no auth middleware.',
+            'COUNTEREXAMPLE (H1): POST /api/resources has no auth middleware (expected protectAdminOrUser or protectAdmin).',
             `Found POST route chain: ${postRouteSection}`,
             'Unauthenticated uploads are currently accepted → HTTP 201 instead of 401.',
         ].join('\n')
@@ -153,6 +153,11 @@ test('H4 — GET /api/resources: protectAdmin middleware is MISSING from the GET
     const getChain = afterResourcesRoute.match(/\.get\([^)]*\)/s)?.[0] ?? '';
 
     assert.ok(getChain.includes('getResources'), `Expected GET /resources to map to getResources. Found: ${getChain}`);
+    assert.equal(
+        getChain.includes('protectAdmin') || getChain.includes('protectAdminOrUser'),
+        false,
+        `Expected GET /resources metadata route to remain public. Found auth middleware in chain: ${getChain}`
+    );
 });
 
 // ─── H5: deleteResource must write an AuditLog entry ─────────────────────────
