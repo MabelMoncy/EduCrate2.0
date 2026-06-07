@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import PDFPreviewModal from '../components/PDFPreviewModal';
 import { FileText, Eye, Loader2 } from 'lucide-react';
-import { getResources, getResourceFileUrl } from '../lib/api';
+import { getResources } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
 export default function Dashboard() {

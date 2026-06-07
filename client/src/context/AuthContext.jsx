@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   onAuthStateChanged,
   signInWithPopup,
@@ -92,15 +92,15 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
-  const closeSignInPrompt = () => {
+  const closeSignInPrompt = useCallback(() => {
     setSignInPrompt(prev => ({
       ...prev,
       isOpen: false,
       afterSignIn: null,
     }));
-  };
+  }, []);
 
-  const signInWithGoogle = async () => {
+  const signInWithGoogle = useCallback(async () => {
     if (!firebaseAuth || !googleProvider) {
       throw new Error('Firebase authentication is not configured.');
     }
@@ -113,7 +113,7 @@ export const AuthProvider = ({ children }) => {
     }
 
     return result;
-  };
+  }, [closeSignInPrompt, signInPrompt.afterSignIn]);
 
   const value = useMemo(() => ({
     user: auth?.user || null,
@@ -128,7 +128,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     signInWithGoogle,
-  }), [auth, firebaseLoading, firebaseUser, signInPrompt]);
+  }), [auth, closeSignInPrompt, firebaseLoading, firebaseUser, signInPrompt, signInWithGoogle]);
 
   return (
     <AuthContext.Provider value={value}>
