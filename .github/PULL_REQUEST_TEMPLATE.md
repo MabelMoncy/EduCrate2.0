@@ -1,22 +1,16 @@
-## Description
-<!-- Please include a summary of the changes and the related issue. Please also include relevant motivation and context. -->
+## Summary
+<!-- Describe what changed and why. -->
 
-Fixes # (issue)
+## Production Readiness Checklist
+- [ ] CI build passes for server and client
+- [ ] Relevant tests pass locally
+- [ ] Lint/build checks were run for impacted apps
+- [ ] Environment variables were reviewed and `.env.example` updated if needed
+- [ ] Domain/CORS settings were validated for production
+- [ ] Google Analytics tag configuration was tested (if applicable)
+- [ ] Google AdSense integration/`ads.txt` was validated (if applicable)
+- [ ] Security-sensitive changes were reviewed (auth, secrets, headers, uploads)
+- [ ] Documentation was updated for deployment or ops changes
 
-## Type of change
-<!-- Please delete options that are not relevant. -->
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] This change requires a documentation update
-
-## How Has This Been Tested?
-<!-- Please describe the tests that you ran to verify your changes. -->
-- [ ] Local testing
-- [ ] Automated tests
-
-## Checklist:
-- [ ] My code follows the style guidelines of this project
-- [ ] I have performed a self-review of my code
-- [ ] I have commented my code, particularly in hard-to-understand areas
-- [ ] My changes generate no new warnings
+## Validation Notes
+<!-- Provide command outputs, screenshots, or links to workflow runs. -->
