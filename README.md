@@ -33,7 +33,7 @@ Before you begin, ensure you have the following installed on your local machine:
 
 ### Clone the repository
 ```bash
-git clone <repository_url>
+git clone https://github.com/MabelMoncy/EduCrate2.0
 cd EduCrate2.0
 ```
 
