@@ -14,12 +14,12 @@
     "axios": "^1.17.0",
     "firebase": "^12.14.0",
     "lucide-react": "^1.17.0",
-    "react": "^18.2.0",
+    "react": "^19.2.7",
     "react-dom": "^18.2.0",
     "react-router-dom": "^7.17.0"
   },
   "devDependencies": {
-    "@types/react": "^18.2.43",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.16",
