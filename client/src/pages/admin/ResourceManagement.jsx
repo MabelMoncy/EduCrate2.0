@@ -43,7 +43,8 @@ export default function ResourceManagement() {
       const updated = await updateResourcePin(resource._id, !resource.isPinned);
       setResources(prev => prev.map(item => item._id === updated._id ? updated : item));
     } catch (err) {
-      alert(err.message || 'Failed to update pinned status.');
+      if (import.meta.env.DEV) console.error('[ResourceManagement] pin toggle:', err.message);
+      alert('Could not update resource. Please try again.');
     } finally {
       setBusyId(null);
     }
@@ -57,7 +58,8 @@ export default function ResourceManagement() {
       await deleteResource(resource._id);
       setResources(prev => prev.filter(item => item._id !== resource._id));
     } catch (err) {
-      alert(err.message || 'Failed to delete resource.');
+      if (import.meta.env.DEV) console.error('[ResourceManagement] delete:', err.message);
+      alert('Could not delete resource. Please try again.');
     } finally {
       setBusyId(null);
     }
