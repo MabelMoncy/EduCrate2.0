@@ -15,14 +15,26 @@ const errorHandler = (err, req, res, next) => {
     res.statusCode === 200 ? (isCorsError ? 403 : 500) : res.statusCode;
   res.status(statusCode);
 
-  const isDev = process.env.NODE_ENV === 'development';
+  const isProd = process.env.NODE_ENV === 'production';
   const isLocal = isLocalAddress(req.ip) || isLocalAddress(req.socket?.remoteAddress);
+  const is5xx = statusCode >= 500;
 
-  // In production: generic message only, no internal details leak
-  // In dev from localhost: include stack for debugging
-  const body = { message: err.message };
-  if (isDev && isLocal && err.stack) {
-    body.stack = err.stack;
+  // Always log 5xx errors server-side so they appear in server logs
+  if (is5xx) {
+    console.error(`[error] ${req.method} ${req.originalUrl} →`, err.message, err.stack);
+  }
+
+  const body = {};
+  if (is5xx && isProd) {
+    // In production, never expose internal details for server errors
+    body.error = 'An unexpected error occurred. Please try again later.';
+  } else {
+    // 4xx errors carry intentional, safe messages (e.g. "Invalid semester", "File too large")
+    // In dev from localhost, also include stack for 5xx debugging
+    body.message = err.message;
+    if (!isProd && isLocal && err.stack) {
+      body.stack = err.stack;
+    }
   }
 
   res.json(body);
