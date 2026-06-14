@@ -71,7 +71,10 @@ export default function SignInPrompt() {
       const cancelled =
         err?.code === 'auth/popup-closed-by-user' ||
         err?.code === 'auth/cancelled-popup-request';
-      if (!cancelled) setError(err.message || 'Unable to sign in. Please try again.');
+      if (!cancelled) {
+        if (import.meta.env.DEV) console.error('[SignInPrompt] Google sign-in error:', err);
+        setError('Unable to sign in. Please try again.');
+      }
     } finally {
       setBusy(false);
     }
@@ -127,12 +130,15 @@ export default function SignInPrompt() {
             </div>
           </div>
 
-          {/* Firebase misconfigured warning */}
+          {/* Firebase misconfigured warning — show a generic message to users; log detail in dev only */}
           {!isFirebaseConfigured && (
-            <div className="mb-5 flex items-start gap-3 rounded-xl border border-amber-500/25 bg-amber-500/10 p-4 text-xs leading-5 text-amber-200">
-              <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
-              Firebase client details are missing. Add the <code>VITE_FIREBASE_*</code> values and restart.
-            </div>
+            <>
+              {import.meta.env.DEV && console.warn('[SignInPrompt] Firebase is not configured. Set the VITE_FIREBASE_* environment variables and restart the dev server.')}
+              <div className="mb-5 flex items-start gap-3 rounded-xl border border-amber-500/25 bg-amber-500/10 p-4 text-xs leading-5 text-amber-200">
+                <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
+                Google Sign-In is temporarily unavailable. Please try again later.
+              </div>
+            </>
           )}
 
           {/* Error */}
