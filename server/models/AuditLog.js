@@ -23,7 +23,6 @@ const auditLogSchema = new mongoose.Schema(
         performedAt: {
             type: Date,
             default: Date.now,
-            index: true,
         },
     },
     { collection: 'auditlogs' }
