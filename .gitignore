@@ -128,3 +128,18 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Security & audit documents
+SecurityFix1.md
+
+# IDE / editor specific
+.kiro/
+.vscode/
+.idea/
+
+# Prompt files
+prompts/
+
+# OS
+.DS_Store
+Thumbs.db

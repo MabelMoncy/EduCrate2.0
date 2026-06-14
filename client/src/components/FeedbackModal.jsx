@@ -5,7 +5,7 @@ import {
   Lightbulb, Wrench, Bug, HelpCircle,
 } from 'lucide-react';
 
-const WEB3FORMS_KEY = 'bd9d6581-1b1c-4d5c-b8f1-d202cf917dec';
+const WEB3FORMS_KEY = import.meta.env.VITE_WEB3FORMS_KEY;
 
 const CATEGORIES = [
   { value: 'feature', label: 'Suggest a new feature',     Icon: Lightbulb },

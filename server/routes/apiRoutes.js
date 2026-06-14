@@ -28,7 +28,6 @@ const uploadRateLimit = rateLimit({
   message: 'Too many upload attempts from this IP. Please try again in 10 minutes.',
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.ip, // explicit per-IP throttling
 });
 
 router.post('/auth/login', loginLimiter, loginAdmin);
@@ -44,9 +43,16 @@ router.route('/resources/:id')
 router.patch('/resources/:id/pin', protectAdmin, updateResourcePin);
 router.get('/resources/:id/file-url', protectAdminOrUser, getResourceFileUrl); // signed file URLs require authentication
 
-// Basic health check route
+// Health check — standard uptime/readiness probe
 router.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'EduCrate API is running' });
+  res.json({
+    status:    'ok',
+    message:   'EduCrate API is running',
+    timestamp: new Date().toISOString(),
+    uptime:    Math.floor(process.uptime()),
+    env:       process.env.NODE_ENV || 'development',
+    version:   process.env.npm_package_version || '1.0.0',
+  });
 });
 
 export default router;

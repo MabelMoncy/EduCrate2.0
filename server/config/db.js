@@ -2,12 +2,12 @@ import mongoose from 'mongoose';
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI);
-    // L28 — never log the Atlas cluster hostname (contains account-identifiable info)
-    // It is visible in logs aggregators / CI output, even in dev sessions
-    console.log('Database connected successfully');
+    await mongoose.connect(process.env.MONGODB_URI);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[db] Connected ✓');
+    }
   } catch (error) {
-    console.error(`Error: ${error.message}`);
+    console.error('[db] Connection failed:', error.message);
     process.exit(1);
   }
 };

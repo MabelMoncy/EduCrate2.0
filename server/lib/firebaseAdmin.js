@@ -15,11 +15,9 @@ const initFirebaseAdmin = () => {
     const { FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY } = process.env;
 
     if (!FIREBASE_PROJECT_ID || !FIREBASE_CLIENT_EMAIL || !FIREBASE_PRIVATE_KEY) {
-        console.warn(
-            '[Firebase] Admin SDK NOT initialized — FIREBASE_PROJECT_ID, ' +
-            'FIREBASE_CLIENT_EMAIL, or FIREBASE_PRIVATE_KEY is missing from .env. ' +
-            'Upload and download endpoints will reject all requests.'
-        );
+        if (process.env.NODE_ENV === 'development') {
+            console.warn('[Firebase] SDK not initialized — missing env vars. Student upload/download will be unavailable.');
+        }
         return false;
     }
 
@@ -32,8 +30,7 @@ const initFirebaseAdmin = () => {
         }),
     });
 
-    console.log('[Firebase] Admin SDK initialized ✓');
-    return true;
+    console.log('[Firebase] Admin SDK initialized ✓');    return true;
 };
 
 const isFirebaseAdminReady = () => admin.apps.length > 0;

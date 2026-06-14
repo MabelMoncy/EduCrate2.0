@@ -34,11 +34,15 @@ const jsonHeaders = async ({ csrf = false, auth = true } = {}) => {
   return headers;
 };
 
-const readErrorMessage = async (response, fallback) => {
+/**
+ * Reads the error detail from a failed response for internal logging only.
+ * Never returns values that are shown directly in the UI.
+ */
+const readErrorDetail = async (response, fallback) => {
   let message = fallback;
   try {
     const errorData = await response.json();
-    message = errorData.message || message;
+    message = errorData.message || errorData.error || message;
   } catch (_error) {
     // Keep the default message when the server does not return JSON.
   }
@@ -56,7 +60,9 @@ export const getResources = async (params = {}) => {
   });
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Failed to fetch resources'));
+    const detail = await readErrorDetail(response, 'Failed to fetch resources');
+    if (import.meta.env.DEV) console.error('[api] getResources:', detail);
+    throw new Error('Unable to load resources. Please try again.');
   }
 
   return response.json();
@@ -75,7 +81,9 @@ export const uploadResource = async (formData) => {
   });
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Failed to upload resource'));
+    const detail = await readErrorDetail(response, 'Failed to upload resource');
+    if (import.meta.env.DEV) console.error('[api] uploadResource:', detail);
+    throw new Error('Upload failed. Please try again.');
   }
 
   return response.json();
@@ -89,7 +97,9 @@ export const deleteResource = async (id) => {
   });
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Failed to delete resource'));
+    const detail = await readErrorDetail(response, 'Failed to delete resource');
+    if (import.meta.env.DEV) console.error('[api] deleteResource:', detail);
+    throw new Error('Could not delete resource. Please try again.');
   }
 
   return response.json();
@@ -104,7 +114,9 @@ export const updateResourcePin = async (id, isPinned) => {
   });
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Failed to update pinned status'));
+    const detail = await readErrorDetail(response, 'Failed to update pinned status');
+    if (import.meta.env.DEV) console.error('[api] updateResourcePin:', detail);
+    throw new Error('Could not update resource. Please try again.');
   }
 
   return response.json();
@@ -121,7 +133,9 @@ export const getResourceFileUrl = async (id, { attachment = false } = {}) => {
   });
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Failed to prepare file link'));
+    const detail = await readErrorDetail(response, 'Failed to prepare file link');
+    if (import.meta.env.DEV) console.error('[api] getResourceFileUrl:', detail);
+    throw new Error('Could not open file. Please try again.');
   }
 
   return response.json();
@@ -136,7 +150,15 @@ export const loginAdmin = async (email, password) => {
   });
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Failed to log in'));
+    // Login errors are intentionally shown to the user (e.g. "Invalid credentials").
+    // We read the server message but never expose the HTTP status code.
+    let message = 'Unable to sign in. Please check your credentials.';
+    try {
+      const errorData = await response.json();
+      if (errorData.message) message = errorData.message;
+    } catch (_error) { /* keep default */ }
+    if (import.meta.env.DEV) console.error('[api] loginAdmin: status', response.status);
+    throw new Error(message);
   }
 
   // Server response is now { user } only — NO token in body (H2)

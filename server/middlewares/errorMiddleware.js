@@ -15,16 +15,29 @@ const errorHandler = (err, req, res, next) => {
     res.statusCode === 200 ? (isCorsError ? 403 : 500) : res.statusCode;
   res.status(statusCode);
 
-  // M22 — removed SHOW_STACKTRACE env-var override (could accidentally leak stacks in production)
-  // Stacks are only shown when NODE_ENV=development AND request is from localhost
-  const shouldExposeStack =
-    process.env.NODE_ENV === 'development' &&
-    (isLocalAddress(req.ip) || isLocalAddress(req.socket?.remoteAddress));
+  const isProd = process.env.NODE_ENV === 'production';
+  const isLocal = isLocalAddress(req.ip) || isLocalAddress(req.socket?.remoteAddress);
+  const is5xx = statusCode >= 500;
 
-  res.json({
-    message: err.message,
-    stack: shouldExposeStack ? err.stack : null,
-  });
+  // Always log 5xx errors server-side so they appear in server logs
+  if (is5xx) {
+    console.error(`[error] ${req.method} ${req.originalUrl} →`, err.message, err.stack);
+  }
+
+  const body = {};
+  if (is5xx && isProd) {
+    // In production, never expose internal details for server errors
+    body.error = 'An unexpected error occurred. Please try again later.';
+  } else {
+    // 4xx errors carry intentional, safe messages (e.g. "Invalid semester", "File too large")
+    // In dev from localhost, also include stack for 5xx debugging
+    body.message = err.message;
+    if (!isProd && isLocal && err.stack) {
+      body.stack = err.stack;
+    }
+  }
+
+  res.json(body);
 };
 
 export { notFound, errorHandler };

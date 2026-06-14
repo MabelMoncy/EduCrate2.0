@@ -1,5 +1,6 @@
 version: 2
 updates:
+  # ── Client npm packages ────────────────────────────────────────────────────
   - package-ecosystem: "npm"
     directory: "/client"
     schedule:
@@ -11,7 +12,31 @@ updates:
     labels:
       - "dependencies"
       - "client"
+    # Group all non-major updates into a single PR to reduce noise
+    groups:
+      client-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      # @types/* major bumps routinely break peer deps — review manually
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react-dom"
+        update-types: ["version-update:semver-major"]
+      # Vite major versions require manual migration (config API changes)
+      - dependency-name: "vite"
+        update-types: ["version-update:semver-major"]
+      # ESLint v9+ has a completely different flat-config format
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      # Tailwind v4 has breaking config changes
+      - dependency-name: "tailwindcss"
+        update-types: ["version-update:semver-major"]
+      # Plugin-react major requires matching Vite major
+      - dependency-name: "@vitejs/plugin-react"
+        update-types: ["version-update:semver-major"]
 
+  # ── Server npm packages ────────────────────────────────────────────────────
   - package-ecosystem: "npm"
     directory: "/server"
     schedule:
@@ -19,11 +44,23 @@ updates:
       day: "monday"
       time: "05:15"
       timezone: "UTC"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "server"
+    groups:
+      server-minor-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      # Express v5 → v6 will be a significant migration — review manually
+      - dependency-name: "express"
+        update-types: ["version-update:semver-major"]
+      # Mongoose major versions have breaking schema/query API changes
+      - dependency-name: "mongoose"
+        update-types: ["version-update:semver-major"]
 
+  # ── GitHub Actions ─────────────────────────────────────────────────────────
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
@@ -31,7 +68,11 @@ updates:
       day: "monday"
       time: "05:30"
       timezone: "UTC"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     labels:
       - "dependencies"
       - "github-actions"
+    groups:
+      actions-all:
+        patterns: ["*"]
+        update-types: ["minor", "patch", "major"]
