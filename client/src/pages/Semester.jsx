@@ -131,8 +131,8 @@ export default function Semester() {
       }
     } catch (err) {
       if (nextTab) nextTab.close();
-      console.error('Failed to prepare download:', err);
-      alert(err.message || 'Failed to prepare download.');
+      if (import.meta.env.DEV) console.error('Failed to prepare download:', err);
+      alert('Could not open file. Please try again.');
     }
   };
 
