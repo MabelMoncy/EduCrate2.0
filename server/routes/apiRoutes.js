@@ -28,7 +28,6 @@ const uploadRateLimit = rateLimit({
   message: 'Too many upload attempts from this IP. Please try again in 10 minutes.',
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.ip, // explicit per-IP throttling
 });
 
 router.post('/auth/login', loginLimiter, loginAdmin);
