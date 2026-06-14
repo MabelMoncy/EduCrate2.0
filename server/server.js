@@ -11,7 +11,7 @@ import apiRoutes from './routes/apiRoutes.js';
 import { notFound, errorHandler } from './middlewares/errorMiddleware.js';
 import { csrfMiddleware } from './middlewares/csrfMiddleware.js';
 import { requireJsonContentType } from './middlewares/contentTypeMiddleware.js';
-import { initFirebaseAdmin } from './lib/firebaseAdmin.js';
+import { initFirebaseAdmin, isFirebaseAdminReady } from './lib/firebaseAdmin.js';
 
 dotenv.config();
 
@@ -80,8 +80,15 @@ app.use(
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Prevent NoSQL injection by removing prohibited keys from body, params, headers, and query
-app.use(mongoSanitize());
+// Prevent NoSQL injection — sanitize body and params only.
+// express-mongo-sanitize hardcodes req.query in its loop; Express 5 makes req.query
+// a read-only getter so that assignment throws. We skip query sanitization here because
+// query params are protected by the strict allowlist in buildResourceQuery().
+app.use((req, res, next) => {
+  mongoSanitize.sanitize(req.body);
+  mongoSanitize.sanitize(req.params);
+  next();
+});
 
 // L32 — reject non-JSON Content-Type on state-changing endpoints (multipart uploads are exempt)
 app.use('/api', requireJsonContentType);
@@ -127,5 +134,30 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  const env = process.env.NODE_ENV || 'development';
+  const isProd = env === 'production';
+
+  if (!isProd) {
+    const firebase = isFirebaseAdminReady() ? '✓ ready' : '✗ not configured (student auth disabled)';
+    console.log('');
+    console.log('  ┌─────────────────────────────────────────────┐');
+    console.log('  │          EduCrate API  ·  DEV               │');
+    console.log('  ├─────────────────────────────────────────────┤');
+    console.log(`  │  port      ${String(PORT).padEnd(33)} │`);
+    console.log(`  │  env       ${env.padEnd(33)} │`);
+    console.log(`  │  firebase  ${firebase.padEnd(33)} │`);
+    console.log('  ├─────────────────────────────────────────────┤');
+    console.log(`  │  http://localhost:${PORT}/api/health             │`);
+    console.log('  └─────────────────────────────────────────────┘');
+    console.log('');
+  } else {
+    // Production: structured JSON line — compatible with log aggregators (Datadog, CloudWatch, etc.)
+    console.log(JSON.stringify({
+      level: 'info',
+      msg:   'server_started',
+      env,
+      pid:   process.pid,
+      ts:    new Date().toISOString(),
+    }));
+  }
 });
