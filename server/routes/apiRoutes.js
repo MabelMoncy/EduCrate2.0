@@ -47,6 +47,7 @@ router.get('/resources/:id/file-url', protectAdminOrUser, getResourceFileUrl); /
 router.get('/health', (req, res) => {
   res.json({
     status:    'ok',
+    message:   'EduCrate API is running',
     timestamp: new Date().toISOString(),
     uptime:    Math.floor(process.uptime()),
     env:       process.env.NODE_ENV || 'development',
