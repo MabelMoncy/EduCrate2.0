@@ -136,12 +136,13 @@ export default function FeedbackModal({ isOpen, onClose }) {
         setStatus('success');
         setTimeout(handleClose, 3000);
       } else {
+        if (import.meta.env.DEV) console.error('[FeedbackModal] Web3Forms error:', data.message);
         setStatus('error');
-        setErrorMsg(data.message || 'Submission failed. Please try again.');
+        setErrorMsg('Something went wrong. Please try again later.');
       }
     } catch {
       setStatus('error');
-      setErrorMsg('Network error. Check your connection and try again.');
+      setErrorMsg('Unable to send feedback. Check your connection and try again.');
     }
   };
 
