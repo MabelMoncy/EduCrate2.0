@@ -135,6 +135,22 @@ if (process.env.NODE_ENV === 'development') {
 // API Routes
 app.use('/api', apiRoutes);
 
+// SPA fallback — serves the React build for any non-API route.
+// Only active in production when the client build is co-located with the server.
+// In development, Vite runs its own dev server on a separate port.
+if (process.env.NODE_ENV === 'production') {
+  const { default: path } = await import('path');
+  const { fileURLToPath } = await import('url');
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const clientBuild = path.resolve(__dirname, '../client/dist');
+
+  app.use(express.static(clientBuild));
+
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientBuild, 'index.html'));
+  });
+}
+
 // Error Handling
 app.use(notFound);
 app.use(errorHandler);
