@@ -12,6 +12,7 @@ import SubjectConfiguration from './pages/admin/SubjectConfiguration';
 import { useAuth } from './context/AuthContext';
 import SplashScreen from './components/SplashScreen';
 import SignInPrompt from './components/SignInPrompt';
+import NotFound from './pages/NotFound';
 
 function AdminRoute({ children }) {
   const location = useLocation();
@@ -61,6 +62,8 @@ function App() {
               <Route path="resources" element={<ResourceManagement />} />
               <Route path="subjects" element={<SubjectConfiguration />} />
             </Route>
+            {/* Catch-all — must be last */}
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Router>
       )}
