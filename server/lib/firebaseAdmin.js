@@ -1,4 +1,19 @@
-import admin from 'firebase-admin';
+import { createRequire } from 'module';
+
+// firebase-admin v14 exposes modular helpers rather than the older top-level
+// namespace shape. This wrapper keeps the rest of the server on the existing
+// admin.auth().verifyIdToken() contract.
+const require = createRequire(import.meta.url);
+const {
+    cert,
+    getApps,
+    initializeApp,
+} = require('firebase-admin');
+const { getAuth } = require('firebase-admin/auth');
+
+const admin = {
+    auth: () => getAuth(),
+};
 
 /**
  * Initializes the Firebase Admin SDK once using service account env vars.
@@ -10,7 +25,7 @@ import admin from 'firebase-admin';
  *   FIREBASE_PRIVATE_KEY   (paste the full key including -----BEGIN/END-----, with \n for newlines)
  */
 const initFirebaseAdmin = () => {
-    if (admin.apps.length > 0) return true; // already initialized
+    if (getApps().length > 0) return true; // already initialized
 
     const { FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY } = process.env;
 
@@ -21,8 +36,8 @@ const initFirebaseAdmin = () => {
         return false;
     }
 
-    admin.initializeApp({
-        credential: admin.credential.cert({
+    initializeApp({
+        credential: cert({
             projectId:   FIREBASE_PROJECT_ID,
             clientEmail: FIREBASE_CLIENT_EMAIL,
             // .env stores \n as literal \\n — convert back to real newlines
@@ -30,9 +45,9 @@ const initFirebaseAdmin = () => {
         }),
     });
 
-    console.log('[Firebase] Admin SDK initialized ✓');    return true;
+    console.log('[Firebase] Admin SDK initialized successfully');    return true;
 };
 
-const isFirebaseAdminReady = () => admin.apps.length > 0;
+const isFirebaseAdminReady = () => getApps().length > 0;
 
 export { admin, initFirebaseAdmin, isFirebaseAdminReady };
