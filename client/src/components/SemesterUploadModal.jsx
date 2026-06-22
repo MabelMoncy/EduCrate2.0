@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Upload, Loader2, BookOpen, FileQuestion, ChevronDown } from 'lucide-react';
+import { X, Upload, Loader2, BookOpen, FileQuestion, ChevronDown, AlertCircle } from 'lucide-react';
 import { uploadResource } from '../lib/api';
 import { getSubjectsForSemester } from '../lib/semesterData';
 
@@ -188,7 +188,7 @@ export default function SemesterUploadModal({
               role="alert"
               className="mb-5 p-3.5 bg-red-500/10 border border-red-500/25 text-red-400 text-sm rounded-xl flex items-start gap-2"
             >
-              <span className="text-red-500 mt-0.5 flex-shrink-0">⚠</span>
+              <AlertCircle className="text-red-500 mt-0.5 flex-shrink-0" size={16} />
               {error}
             </div>
           )}
