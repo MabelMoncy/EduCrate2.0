@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import PDFPreviewModal from '../components/PDFPreviewModal';
-import { FileText, Eye, Loader2 } from 'lucide-react';
+import { FileText, Eye, Loader2, BookOpen } from 'lucide-react';
 import { getResources } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -79,7 +79,9 @@ export default function Dashboard() {
     <Layout>
       <header className="mb-10 flex flex-col md:flex-row justify-between items-start gap-4">
         <div>
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">Welcome to EduCrate 📚</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-2 flex items-center gap-2">
+            Welcome to EduCrate <BookOpen className="text-primary inline-block" size={28} />
+          </h2>
           <p className="text-textMuted max-w-2xl text-sm md:text-base">
             Browse, upload, and share CS resources freely — no account needed. There {recentResources.length === 1 ? 'is' : 'are'} <span className="text-white font-medium">{recentResources.length} resource{recentResources.length !== 1 ? 's' : ''}</span> uploaded by the community so far.
           </p>
