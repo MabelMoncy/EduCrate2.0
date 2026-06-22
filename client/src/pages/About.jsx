@@ -1,4 +1,5 @@
 import React from 'react';
+import { Check } from 'lucide-react';
 import Layout from '../components/Layout';
 
 export default function About() {
@@ -39,7 +40,7 @@ export default function About() {
             ].map((feature, index) => (
               <li key={index} className="flex items-start gap-3 bg-white/5 p-4 rounded-lg border border-white/5">
                 <div className="w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center flex-shrink-0 mt-0.5">
-                  ✓
+                  <Check size={14} />
                 </div>
                 <span>{feature}</span>
               </li>
