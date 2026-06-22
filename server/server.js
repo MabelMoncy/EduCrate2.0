@@ -162,7 +162,7 @@ app.listen(PORT, () => {
   const isProd = env === 'production';
 
   if (!isProd) {
-    const firebase = isFirebaseAdminReady() ? '✓ ready' : '✗ not configured (student auth disabled)';
+    const firebase = isFirebaseAdminReady() ? 'ready' : 'not configured (student auth disabled)';
     console.log('');
     console.log('  ┌─────────────────────────────────────────────┐');
     console.log('  │          EduCrate API  ·  DEV               │');
