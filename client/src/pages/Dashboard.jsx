@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import PDFPreviewModal from '../components/PDFPreviewModal';
-import { FileText, Eye, Loader2 } from 'lucide-react';
+import { FileText, Eye, Loader2, ArrowRight } from 'lucide-react';
 import { getResources } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -175,6 +175,40 @@ export default function Dashboard() {
           onClose={() => setPreviewResource(null)}
         />
       )}
+
+      {/* 2024 Scheme PYQ Promotion Section */}
+      <section className="mt-12 mb-8">
+        <div className="mb-4">
+          <h2 className="text-2xl font-bold text-white mb-1">2024 scheme Computer Science PYQs</h2>
+          <p className="text-sm text-textMuted">Access previous year questions for the latest academic scheme</p>
+        </div>
+        
+        <div 
+          onClick={() => navigate('/pyqs')}
+          className="group relative p-6 md:p-8 rounded-2xl overflow-hidden cursor-pointer bg-gradient-to-r from-[#1c2235] to-[#151a28] border border-white/10 hover:border-indigo-500/50 transition-all flex flex-col sm:flex-row items-center gap-6"
+        >
+          {/* Subtle background glow */}
+          <div className="absolute -inset-full bg-gradient-to-r from-transparent via-indigo-500/10 to-transparent group-hover:animate-[shimmer_2s_infinite] pointer-events-none" />
+          
+          <div className="w-16 h-16 rounded-2xl bg-indigo-500 flex items-center justify-center flex-shrink-0 shadow-[0_0_20px_rgba(99,102,241,0.4)]">
+            <span className="text-white text-2xl">📄</span>
+          </div>
+          
+          <div className="flex-1 text-center sm:text-left z-10">
+            <h3 className="text-xl font-bold text-white mb-1">Explore 2024 Scheme Repository</h3>
+            <p className="text-textMuted text-sm">Browse curated previous year questions, solutions, and study guides for all semesters.</p>
+          </div>
+          
+          <div className="flex items-center gap-2 text-white font-semibold text-sm tracking-wider uppercase z-10">
+            VIEW PYQS <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+          </div>
+        </div>
+      </section>
+
+      {/* Footer / Copyright */}
+      <footer className="mt-16 mb-8 text-center text-xs text-textMuted">
+        &copy; 2024 EduCrate Resources. Designed for excellence in Computer Science education.
+      </footer>
     </Layout>
   );
 }

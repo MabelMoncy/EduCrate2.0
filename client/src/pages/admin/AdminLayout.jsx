@@ -1,12 +1,15 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { BarChart3, Files, LogOut, Settings, ShieldCheck } from 'lucide-react';
+import { BarChart3, Files, LogOut, Settings, ShieldCheck, FileQuestion, IndianRupee, Users } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const navItems = [
   { to: '/admin', label: 'Overview', Icon: BarChart3, end: true },
-  { to: '/admin/resources', label: 'Manage Resources', Icon: Files },
+  { to: '/admin/resources', label: 'Manage Notes', Icon: Files },
   { to: '/admin/subjects', label: 'Subject Config', Icon: Settings },
+  { to: '/admin/pyqs', label: 'PYQ Management', Icon: FileQuestion },
+  { to: '/admin/payments', label: 'Payments', Icon: IndianRupee },
+  { to: '/admin/buyers', label: 'Buyers', Icon: Users },
 ];
 
 export default function AdminLayout() {

@@ -11,7 +11,6 @@ import {
   Loader2,
   Upload,
   BookOpen,
-  FileQuestion,
   Folder,
   FolderOpen,
   ChevronRight,
@@ -25,7 +24,6 @@ import { useAuth } from '../context/AuthContext';
 
 // ── Tab constants ──────────────────────────────────────────────────────────────
 const TAB_NOTES = 'notes';
-const TAB_PYQS = 'pyq';
 
 export default function Semester() {
   const { id } = useParams();           // e.g. 'S4'
@@ -41,11 +39,8 @@ export default function Semester() {
   const uploadAllowed = semesterNum < 6;
 
   // ── State ──────────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState(TAB_NOTES);
   const [notes, setNotes] = useState({});   // { [subject]: Resource[] }
-  const [pyqs, setPyqs] = useState([]);   // Resource[]
   const [loadingNotes, setLoadingNotes] = useState(false);
-  const [loadingPyqs, setLoadingPyqs] = useState(false);
   const [openFolders, setOpenFolders] = useState({});   // { [subject]: bool }
   const [previewResource, setPreviewResource] = useState(null);
   const [uploadModal, setUploadModal] = useState({
@@ -82,23 +77,10 @@ export default function Semester() {
     }
   }, [id, hasSubjects, subjects]);
 
-  const fetchPyqs = useCallback(async () => {
-    setLoadingPyqs(true);
-    try {
-      const data = await getResources({ semester: id, type: TAB_PYQS });
-      setPyqs(data);
-    } catch (err) {
-      console.error('Failed to fetch PYQs:', err);
-    } finally {
-      setLoadingPyqs(false);
-    }
-  }, [id]);
-
-  // Fetch both on mount and whenever semester changes
+  // Fetch on mount and whenever semester changes
   useEffect(() => {
     fetchAllNotes();
-    fetchPyqs();
-  }, [fetchAllNotes, fetchPyqs]);
+  }, [fetchAllNotes]);
 
   // ── Folder toggle ──────────────────────────────────────────────────────────
   const toggleFolder = (subject) => {
@@ -154,8 +136,6 @@ export default function Semester() {
   const handleUploadSuccess = () => {
     if (uploadModal.type === TAB_NOTES) {
       fetchAllNotes();
-    } else {
-      fetchPyqs();
     }
   };
 
@@ -278,123 +258,50 @@ export default function Semester() {
           <span className="bg-primary/10 text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/20">
             {totalNotes} note{totalNotes !== 1 ? 's' : ''}
           </span>
-          <span className="bg-amber-500/10 text-amber-400 text-xs font-semibold px-3 py-1.5 rounded-full border border-amber-500/20">
-            {pyqs.length} PYQ{pyqs.length !== 1 ? 's' : ''}
-          </span>
         </div>
       </header>
 
-      {/* ── Tabs ── */}
-      <div className="flex items-center border-b border-white/8 mb-6 gap-1">
-        {[
-          { key: TAB_NOTES, label: 'Notes', Icon: BookOpen },
-          { key: TAB_PYQS, label: 'PYQs', Icon: FileQuestion },
-        ].map(({ key, label, Icon }) => (
+      {/* ══════════════════════════════════════════════════════════════════
+          NOTES TAB (Now just the main view)
+      ══════════════════════════════════════════════════════════════════ */}
+      <section>
+        {/* Tab toolbar */}
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-lg font-semibold text-white">
+            {hasSubjects ? 'Subject Folders' : 'All Notes'}
+          </h3>
           <button
-            key={key}
-            onClick={() => setActiveTab(key)}
-            className={`flex items-center gap-2 px-5 py-3 text-sm font-medium border-b-2 transition-all -mb-px ${activeTab === key
-                ? 'border-primary text-primary'
-                : 'border-transparent text-textMuted hover:text-gray-300 hover:border-white/20'
-              }`}
+            onClick={() => handleUploadClick(TAB_NOTES)}
+            className="flex items-center gap-2 bg-primary hover:bg-primaryHover text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)]"
+            id="upload-notes-btn"
           >
-            <Icon size={16} />
-            {label}
+            <Upload size={16} />
+            Upload Notes
           </button>
-        ))}
-      </div>
+        </div>
 
-      {/* ══════════════════════════════════════════════════════════════════
-          NOTES TAB
-      ══════════════════════════════════════════════════════════════════ */}
-      {activeTab === TAB_NOTES && (
-        <section>
-          {/* Tab toolbar */}
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="text-lg font-semibold text-white">
-              {hasSubjects ? 'Subject Folders' : 'All Notes'}
-            </h3>
-            <button
-              onClick={() => handleUploadClick(TAB_NOTES)}
-              className="flex items-center gap-2 bg-primary hover:bg-primaryHover text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)]"
-              id="upload-notes-btn"
-            >
-              <Upload size={16} />
-              Upload Notes
-            </button>
+        {loadingNotes ? (
+          <div className="flex flex-col items-center gap-3 py-20 text-textMuted">
+            <Loader2 className="animate-spin" size={32} />
+            <p className="text-sm">Loading notes…</p>
           </div>
-
-          {loadingNotes ? (
-            <div className="flex flex-col items-center gap-3 py-20 text-textMuted">
-              <Loader2 className="animate-spin" size={32} />
-              <p className="text-sm">Loading notes…</p>
-            </div>
-          ) : hasSubjects ? (
-            /* Subject folder grid */
-            <div className="space-y-3">
-              {subjects.map(subject => (
-                <SubjectFolder key={subject} subject={subject} />
-              ))}
-            </div>
-          ) : (
-            /* Fallback flat list for semesters without subject config */
-            <FlatNotesList
-              items={Object.values(notes).flat()}
-              onPreview={handlePreview}
-              onDownload={handleDownload}
-              onUpload={() => handleUploadClick(TAB_NOTES)}
-            />
-          )}
-        </section>
-      )}
-
-      {/* ══════════════════════════════════════════════════════════════════
-          PYQS TAB
-      ══════════════════════════════════════════════════════════════════ */}
-      {activeTab === TAB_PYQS && (
-        <section>
-          {/* Tab toolbar */}
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="text-lg font-semibold text-white">
-              Question Papers
-            </h3>
-            <button
-              onClick={() => handleUploadClick(TAB_PYQS)}
-              className="flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition-all shadow-[0_0_15px_rgba(217,119,6,0.25)]"
-              id="upload-pyq-btn"
-            >
-              <Upload size={16} />
-              Upload PYQ
-            </button>
+        ) : hasSubjects ? (
+          /* Subject folder grid */
+          <div className="space-y-3">
+            {subjects.map(subject => (
+              <SubjectFolder key={subject} subject={subject} />
+            ))}
           </div>
-
-          {loadingPyqs ? (
-            <div className="flex flex-col items-center gap-3 py-20 text-textMuted">
-              <Loader2 className="animate-spin" size={32} />
-              <p className="text-sm">Loading question papers…</p>
-            </div>
-          ) : pyqs.length > 0 ? (
-            <div className="space-y-2.5">
-              {pyqs.map((item, i) => (
-                <PyqCard
-                  key={item._id || i}
-                  item={item}
-                  onPreview={handlePreview}
-                  onDownload={handleDownload}
-                />
-              ))}
-            </div>
-          ) : (
-            <EmptyState
-              icon={FileQuestion}
-              message="No question papers uploaded yet."
-              sub="Be the first to upload a PYQ for this semester."
-              onUpload={() => handleUploadClick(TAB_PYQS)}
-              uploadLabel="Upload PYQ"
-            />
-          )}
-        </section>
-      )}
+        ) : (
+          /* Fallback flat list for semesters without subject config */
+          <FlatNotesList
+            items={Object.values(notes).flat()}
+            onPreview={handlePreview}
+            onDownload={handleDownload}
+            onUpload={() => handleUploadClick(TAB_NOTES)}
+          />
+        )}
+      </section>
 
       {/* ── Modals ── */}
       <SemesterUploadModal
@@ -476,47 +383,6 @@ export default function Semester() {
 }
 
 // ── Pure presentational sub-components (outside main component for perf) ────
-
-function PyqCard({ item, onPreview, onDownload }) {
-  return (
-    <div className="flex items-center gap-3 p-4 rounded-xl bg-surface border border-white/5 hover:border-amber-500/20 hover:bg-amber-500/3 transition-all group">
-      <div className="w-10 h-10 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
-        <FileQuestion className="text-amber-400" size={18} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-white text-sm truncate">{item.title}</p>
-        <p className="text-xs text-textMuted truncate mt-0.5">{item.description}</p>
-        <div className="flex items-center gap-3 mt-1">
-          {item.subject && (
-            <span className="text-xs text-amber-400/70">{item.subject}</span>
-          )}
-          <span className="text-xs text-gray-500">
-            {item.fileSize || '—'} &bull; {item.createdAt
-              ? new Date(item.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
-              : 'Unknown date'}
-          </span>
-        </div>
-      </div>
-      <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-        <button
-          onClick={() => onPreview(item)}
-          className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors"
-          title="Preview"
-        >
-          <Eye size={15} />
-        </button>
-        <button
-          type="button"
-          onClick={() => onDownload(item)}
-          className="p-2 rounded-lg bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 transition-colors"
-          title="Download"
-        >
-          <Download size={15} />
-        </button>
-      </div>
-    </div>
-  );
-}
 
 function FlatNotesList({ items, onPreview, onDownload, onUpload }) {
   if (items.length === 0) {

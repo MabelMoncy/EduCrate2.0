@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Database, FileText, Loader2, Pin, ServerCrash } from 'lucide-react';
+import { Database, FileText, Loader2, Pin, ServerCrash, FileQuestion, IndianRupee, Users } from 'lucide-react';
 import { getResources } from '../../lib/api';
 import { VALID_SEMESTERS } from '../../lib/semesterData';
+import { useAuth } from '../../context/AuthContext';
 
 const parseFileSizeMb = (fileSize = '') => {
   const value = Number.parseFloat(fileSize);
@@ -9,16 +10,39 @@ const parseFileSizeMb = (fileSize = '') => {
 };
 
 export default function AdminOverview() {
+  const { user } = useAuth();
   const [resources, setResources] = useState([]);
+  const [pyqCount, setPyqCount] = useState(0);
+  const [revenue, setRevenue] = useState(0);
+  const [buyersCount, setBuyersCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const fetchResources = async () => {
+    const fetchAllData = async () => {
       try {
         setLoading(true);
         setError('');
-        setResources(await getResources());
+        
+        // Fetch original resources
+        const resData = await getResources();
+        setResources(resData);
+
+        // Fetch PYQs
+        const pyqRes = await fetch('/api/pyq');
+        const pyqs = await pyqRes.json();
+        setPyqCount(pyqs.length || 0);
+
+        // Fetch Payments
+        const payRes = await fetch('/api/admin/payments', { headers: { Authorization: `Bearer ${user.token}` }});
+        const payData = await payRes.json();
+        setRevenue(payData.totalRevenue || 0);
+
+        // Fetch Buyers
+        const buyerRes = await fetch('/api/admin/buyers', { headers: { Authorization: `Bearer ${user.token}` }});
+        const buyerData = await buyerRes.json();
+        setBuyersCount(buyerData.totalBuyers || 0);
+
       } catch (err) {
         setError(err.message || 'Failed to load admin overview.');
       } finally {
@@ -26,8 +50,10 @@ export default function AdminOverview() {
       }
     };
 
-    fetchResources();
-  }, []);
+    if (user?.token) {
+      fetchAllData();
+    }
+  }, [user]);
 
   const stats = useMemo(() => {
     const totalStorageMb = resources.reduce((sum, resource) => sum + parseFileSizeMb(resource.fileSize), 0);
@@ -69,22 +95,43 @@ export default function AdminOverview() {
     <div className="space-y-8">
       <section className="grid gap-4 md:grid-cols-3">
         <StatCard
-          label="Total Documents"
+          label="Total Notes"
           value={stats.totalDocuments}
-          helper="Notes and PYQs in MongoDB"
+          helper="Study materials in MongoDB"
           Icon={FileText}
         />
         <StatCard
           label="Total Storage"
           value={`${stats.totalStorageMb.toFixed(2)} MB`}
-          helper="Estimated from uploaded metadata"
+          helper="Estimated Notes storage"
           Icon={Database}
         />
         <StatCard
-          label="Pinned Papers"
+          label="Pinned Notes"
           value={stats.pinnedCount}
           helper="Shown in Department Papers"
           Icon={Pin}
+        />
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3 mt-4">
+        <StatCard
+          label="Total PYQs Uploaded"
+          value={pyqCount}
+          helper="Premium question papers"
+          Icon={FileQuestion}
+        />
+        <StatCard
+          label="Total Revenue"
+          value={`₹${revenue}`}
+          helper="From PYQ sales"
+          Icon={IndianRupee}
+        />
+        <StatCard
+          label="Total Buyers"
+          value={buyersCount}
+          helper="Unique purchasing students"
+          Icon={Users}
         />
       </section>
 

@@ -28,6 +28,7 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [auth, setAuth] = useState(() => readStoredAuth());
   const [firebaseUser, setFirebaseUser] = useState(null);
+  const [studentData, setStudentData] = useState(null);
   const [firebaseLoading, setFirebaseLoading] = useState(isFirebaseConfigured);
   const [signInPrompt, setSignInPrompt] = useState({
     isOpen: false,
@@ -47,8 +48,24 @@ export const AuthProvider = ({ children }) => {
       return currentUser ? currentUser.getIdToken() : '';
     });
 
-    return onAuthStateChanged(firebaseAuth, (user) => {
+    return onAuthStateChanged(firebaseAuth, async (user) => {
       setFirebaseUser(user);
+      if (user) {
+        try {
+          // Fetch student data from our server (includes purchasedPYQs)
+          const response = await fetch('/api/students/me', {
+            headers: { Authorization: `Bearer ${await user.getIdToken()}` }
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setStudentData(data);
+          }
+        } catch (err) {
+          console.error('Failed to fetch student profile:', err);
+        }
+      } else {
+        setStudentData(null);
+      }
       setFirebaseLoading(false);
     });
   }, []);
@@ -119,6 +136,7 @@ export const AuthProvider = ({ children }) => {
     user: auth?.user || null,
     isAdmin: auth?.user?.role === 'admin',
     firebaseUser,
+    studentData,
     firebaseLoading,
     isFirebaseConfigured,
     isSignedIn: !!auth?.user || !!firebaseUser,
@@ -128,7 +146,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     signInWithGoogle,
-  }), [auth, closeSignInPrompt, firebaseLoading, firebaseUser, signInPrompt, signInWithGoogle]);
+  }), [auth, closeSignInPrompt, firebaseLoading, firebaseUser, studentData, signInPrompt, signInWithGoogle]);
 
   return (
     <AuthContext.Provider value={value}>

@@ -10,9 +10,23 @@ import {
 import { loginAdmin, logoutAdmin } from '../controllers/authController.js';
 import { protectAdmin } from '../middlewares/authMiddleware.js';
 import { protectAdminOrUser } from '../middlewares/protectUser.js';
+import { protectStudent } from '../middlewares/protectStudent.js';
 import upload from '../middlewares/uploadMiddleware.js';
 
+import { uploadPYQ, listPYQs, deletePYQ, getPYQViewUrl } from '../controllers/pyqController.js';
+import { createOrder, verifyPayment, getMyOrders, getAdminPayments, getAdminBuyers } from '../controllers/orderController.js';
+
 const router = express.Router();
+
+// ── Student Auth Route ─────────────────────────────────────────────────────
+router.get('/students/me', protectStudent, async (req, res, next) => {
+  res.json({
+    _id: req.student._id,
+    email: req.student.email,
+    displayName: req.student.displayName,
+    purchasedPYQs: req.student.purchasedPYQs,
+  });
+});
 
 const loginLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
@@ -42,6 +56,23 @@ router.route('/resources/:id')
 
 router.patch('/resources/:id/pin', protectAdmin, updateResourcePin);
 router.get('/resources/:id/file-url', protectAdminOrUser, getResourceFileUrl); // signed file URLs require authentication
+
+// ── PYQ Routes ─────────────────────────────────────────────────────────────
+router.route('/pyq')
+  .get(listPYQs)
+  .post(uploadRateLimit, protectAdmin, upload.single('file'), uploadPYQ);
+
+router.delete('/pyq/:id', protectAdmin, deletePYQ);
+router.get('/pyq/:id/view-url', protectStudent, getPYQViewUrl);
+
+// ── Order Routes ───────────────────────────────────────────────────────────
+router.post('/orders/create', protectStudent, createOrder);
+router.post('/orders/verify', protectStudent, verifyPayment);
+router.get('/orders/my', protectStudent, getMyOrders);
+
+// ── Admin Payments/Buyers Routes ───────────────────────────────────────────
+router.get('/admin/payments', protectAdmin, getAdminPayments);
+router.get('/admin/buyers', protectAdmin, getAdminBuyers);
 
 // Health check — standard uptime/readiness probe
 router.get('/health', (req, res) => {

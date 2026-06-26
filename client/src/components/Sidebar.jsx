@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, BookOpen, Info, X, MessageSquarePlus } from 'lucide-react';
+import { LayoutDashboard, BookOpen, Info, X, MessageSquarePlus, FileText } from 'lucide-react';
 import FeedbackModal from './FeedbackModal';
 
 export default function Sidebar({ isOpen, setIsOpen }) {
   const navigate = useNavigate();
   const location = useLocation();
   const isHome = location.pathname === '/';
+  const isPYQs = location.pathname.startsWith('/pyqs');
   const isAbout = location.pathname === '/about';
   const [feedbackOpen, setFeedbackOpen] = useState(false);
 
@@ -53,6 +54,17 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           >
             <BookOpen size={20} />
             Library
+          </button>
+
+          <button
+            onClick={() => handleNav('/pyqs')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${isPYQs
+              ? 'bg-[#171c2c] text-indigo-400 border-l-2 border-indigo-400 rounded-r-lg'
+              : 'text-textMuted hover:bg-white/5'
+              }`}
+          >
+            <FileText size={20} />
+            PYQ Hub
           </button>
 
           <button
