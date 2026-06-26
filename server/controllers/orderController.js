@@ -64,10 +64,17 @@ export const createOrder = async (req, res, next) => {
     const options = {
       amount: totalAmount * 100, // in paise
       currency: 'INR',
-      receipt: `rcpt_${student._id}_${Date.now()}`,
+      // Razorpay enforces a 40-char max on receipt
+      receipt: `rc_${student._id.toString().slice(-8)}_${Date.now().toString().slice(-8)}`,
     };
 
-    const razorpayOrder = await rzp.orders.create(options);
+    const razorpayOrder = await rzp.orders.create(options).catch((rzpErr) => {
+      // Razorpay SDK error objects have the real message in rzpErr.error.description
+      const description = rzpErr?.error?.description || rzpErr?.message || JSON.stringify(rzpErr);
+      console.error('[Razorpay] order creation failed:', description);
+      res.status(502);
+      throw new Error(`Payment gateway error: ${description}`);
+    });
 
     const order = await Order.create({
       razorpayOrderId: razorpayOrder.id,
