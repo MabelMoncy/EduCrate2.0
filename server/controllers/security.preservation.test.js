@@ -51,9 +51,11 @@ test('3.1 — deleteResource: deletes from MongoDB and calls Cloudinary destroy'
         'utf8'
     );
     assert.ok(
+        routeSource.includes('protectAdminOrUser, deleteResource') ||
+        routeSource.includes('protectAdminOrUser,deleteResource') ||
         routeSource.includes('protectAdmin, deleteResource') ||
         routeSource.includes('protectAdmin,deleteResource'),
-        'DELETE /api/resources/:id must keep the protectAdmin guard'
+        'DELETE /api/resources/:id must keep the protectAdmin or protectAdminOrUser guard'
     );
 
     // The controller must respond with a success message
