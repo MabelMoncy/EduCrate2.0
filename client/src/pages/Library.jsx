@@ -222,7 +222,7 @@ export default function Library() {
                   uploads.length === 0 ? (
                     <div className="text-center text-textMuted py-16 bg-surface rounded-xl border border-white/5">
                         <UploadCloud className="mx-auto h-10 w-10 opacity-30 mb-3" />
-                        <p>You haven't uploaded anything yet.</p>
+                        <p>You haven&apos;t uploaded anything yet.</p>
                     </div>
                   ) : (
                     uploads.map(resource => (
