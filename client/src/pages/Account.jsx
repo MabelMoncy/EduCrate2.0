@@ -66,7 +66,7 @@ export default function Account() {
           <div className="p-1 rounded-2xl bg-surface border border-white/10">
             {purchasedPYQs.length === 0 ? (
               <div className="p-12 text-center text-textMuted">
-                <p className="mb-4">You haven't purchased any PYQs yet.</p>
+                <p className="mb-4">You haven&apos;t purchased any PYQs yet.</p>
                 <button 
                   onClick={() => navigate('/pyqs')}
                   className="px-6 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-semibold transition-colors"

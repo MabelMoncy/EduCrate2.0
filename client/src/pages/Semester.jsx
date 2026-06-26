@@ -11,7 +11,6 @@ import {
   Loader2,
   Upload,
   BookOpen,
-  FileQuestion,
   Folder,
   FolderOpen,
   ChevronRight,

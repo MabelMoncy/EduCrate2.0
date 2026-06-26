@@ -136,7 +136,7 @@ export default function Cart() {
               <span className="text-2xl">🛒</span>
             </div>
             <p className="text-xl font-semibold text-white mb-2">Your cart is empty</p>
-            <p className="text-textMuted mb-6">Looks like you haven't added any PYQs yet.</p>
+            <p className="text-textMuted mb-6">Looks like you haven&apos;t added any PYQs yet.</p>
             <button 
               onClick={() => navigate('/pyqs')}
               className="px-6 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-semibold transition-colors"

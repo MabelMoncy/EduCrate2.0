@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2, IndianRupee, TrendingUp, ShoppingBag } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -12,11 +12,7 @@ export default function Payments() {
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchPayments();
-  }, []);
-
-  const fetchPayments = async () => {
+  const fetchPayments = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch('/api/admin/payments', {
@@ -29,7 +25,11 @@ export default function Payments() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchPayments();
+  }, [fetchPayments]);
 
   return (
     <div className="space-y-6">

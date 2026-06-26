@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { ArrowRight, Calendar, Loader2 } from 'lucide-react';
-import { getResources } from '../lib/api'; // wait, no I need a new getPYQs function in api.js
 
 export default function PYQYears() {
   const { semId } = useParams();

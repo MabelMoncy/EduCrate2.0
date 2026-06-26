@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2, Users } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -10,11 +10,7 @@ export default function Buyers() {
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchBuyers();
-  }, []);
-
-  const fetchBuyers = async () => {
+  const fetchBuyers = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch('/api/admin/buyers', {
@@ -27,7 +23,11 @@ export default function Buyers() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    fetchBuyers();
+  }, [fetchBuyers]);
 
   return (
     <div className="space-y-6">
