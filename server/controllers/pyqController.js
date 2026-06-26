@@ -172,3 +172,25 @@ export const getPYQViewUrl = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Get My Purchased PYQs
+// @route   GET /api/pyq/my
+// @access  Student
+export const getMyPYQs = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ firebaseUid: req.student.firebaseUid }).populate('purchasedPYQs.pyqId');
+    if (!student) {
+      res.status(404);
+      throw new Error('Student not found');
+    }
+    
+    // Extract just the populated PYQ objects
+    const myPyqs = student.purchasedPYQs
+      .map(item => item.pyqId)
+      .filter(pyq => pyq != null); // filter out if a PYQ was deleted from DB
+
+    res.json(myPyqs);
+  } catch (error) {
+    next(error);
+  }
+};

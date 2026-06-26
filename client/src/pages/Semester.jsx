@@ -13,6 +13,7 @@ import {
   BookOpen,
   Folder,
   FolderOpen,
+  FolderHeart,
   ChevronRight,
   ChevronDown,
   Lock,
@@ -21,6 +22,7 @@ import {
 import { getResources, getResourceFileUrl } from '../lib/api';
 import { getSubjectsForSemester } from '../lib/semesterData';
 import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
 
 // ── Tab constants ──────────────────────────────────────────────────────────────
 const TAB_NOTES = 'notes';
@@ -28,7 +30,7 @@ const TAB_NOTES = 'notes';
 export default function Semester() {
   const { id } = useParams();           // e.g. 'S4'
   const navigate = useNavigate();
-  const { isSignedIn, openSignInPrompt } = useAuth();
+  const { isSignedIn, openSignInPrompt, firebaseUser } = useAuth();
 
   const semesterNumber = id ? id.replace('S', '') : '';
   const subjects = getSubjectsForSemester(id);
@@ -144,8 +146,45 @@ export default function Semester() {
 
   // ── Sub-components ─────────────────────────────────────────────────────────
 
+  const [savedResourceIds, setSavedResourceIds] = useState(new Set());
+  
+  useEffect(() => {
+    if (isSignedIn && firebaseUser) {
+      firebaseUser.getIdToken().then(token => {
+        axios.get(`${import.meta.env.VITE_API_URL}/students/me/bookmarks`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }).then(res => {
+          setSavedResourceIds(new Set(res.data.map(r => r._id)));
+        }).catch(err => console.error("Failed to fetch bookmarks:", err));
+      });
+    }
+  }, [isSignedIn, firebaseUser]);
+
+  const handleToggleBookmark = async (resource) => {
+    if (!isSignedIn) {
+      openSignInPrompt({ reason: 'bookmark' });
+      return;
+    }
+    try {
+      const token = await firebaseUser?.getIdToken();
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/resources/${resource._id}/bookmark`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setSavedResourceIds(prev => {
+        const next = new Set(prev);
+        if (res.data.isBookmarked) next.add(resource._id);
+        else next.delete(resource._id);
+        return next;
+      });
+    } catch (err) {
+      console.error("Failed to toggle bookmark");
+    }
+  };
+
   /** A single resource row used in both expanded folders and the PYQ flat list */
-  const ResourceRow = ({ item }) => (
+  const ResourceRow = ({ item }) => {
+    const isBookmarked = savedResourceIds.has(item._id);
+    return (
     <div className="flex items-center gap-3 p-3 rounded-xl bg-white/3 border border-white/5 hover:border-white/10 hover:bg-white/5 transition-all group">
       <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
         <FileText className="text-primary" size={16} />
@@ -158,7 +197,14 @@ export default function Semester() {
         </p>
       </div>
       {/* Actions */}
-      <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+      <div className="flex items-center gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex-shrink-0">
+        <button
+          onClick={() => handleToggleBookmark(item)}
+          className={`p-2 rounded-lg transition-colors ${isBookmarked ? 'bg-primary/20 text-primary hover:bg-primary/30' : 'bg-white/5 text-textMuted hover:bg-white/10 hover:text-white'}`}
+          title={isBookmarked ? "Remove Bookmark" : "Save to Library"}
+        >
+          <FolderHeart size={15} className={isBookmarked ? 'fill-current' : ''} />
+        </button>
         <button
           onClick={() => handlePreview(item)}
           className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 transition-colors"
@@ -176,7 +222,8 @@ export default function Semester() {
         </button>
       </div>
     </div>
-  );
+    );
+  };
 
   /** Subject folder card */
   const SubjectFolder = ({ subject }) => {

@@ -34,6 +34,7 @@ import PYQYears from './pages/PYQYears';
 import PYQSubjects from './pages/PYQSubjects';
 import Cart from './pages/Cart';
 import Account from './pages/Account';
+import Library from './pages/Library';
 
 function App() {
   const { isSignedIn, openSignInPrompt } = useAuth();
@@ -61,6 +62,7 @@ function App() {
               <Route path="/semester/:id" element={<Semester />} />
               <Route path="/about" element={<About />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/library" element={<Library />} />
               <Route path="/pyqs" element={<PYQHub />} />
               <Route path="/pyqs/:semId" element={<PYQYears />} />
               <Route path="/pyqs/:semId/:year" element={<PYQSubjects />} />

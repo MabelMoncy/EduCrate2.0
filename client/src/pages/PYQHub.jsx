@@ -7,14 +7,14 @@ export default function PYQHub() {
   const navigate = useNavigate();
 
   const semesters = [
-    { id: 'S1', title: 'Semester 1', papers: '8 Subject Papers Available', status: 'active' },
-    { id: 'S2', title: 'Semester 2', papers: '8 Subject Papers Available', status: 'active' },
-    { id: 'S3', title: 'Semester 3', papers: '7 Subject Papers Available', status: 'active' },
-    { id: 'S4', title: 'Semester 4', papers: '9 Subject Papers Available', status: 'active' },
-    { id: 'S5', title: 'Semester 5', papers: '8 Subject Papers Available', status: 'active' },
-    { id: 'S6', title: 'Semester 6', papers: 'Available in Next Session', status: 'locked' },
-    { id: 'S7', title: 'Semester 7', papers: 'Available in Next Session', status: 'locked' },
-    { id: 'S8', title: 'Semester 8', papers: 'Available in Next Session', status: 'locked' },
+    { id: 'S1', title: 'Semester 1', status: 'active' },
+    { id: 'S2', title: 'Semester 2', status: 'active' },
+    { id: 'S3', title: 'Semester 3', status: 'active' },
+    { id: 'S4', title: 'Semester 4', status: 'active' },
+    { id: 'S5', title: 'Semester 5', status: 'active' },
+    { id: 'S6', title: 'Semester 6', status: 'locked' },
+    { id: 'S7', title: 'Semester 7', status: 'locked' },
+    { id: 'S8', title: 'Semester 8', status: 'locked' },
   ];
 
   return (
@@ -36,14 +36,14 @@ export default function PYQHub() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {semesters.map((s, index) => {
           const isActive = s.status === 'active';
-          
+
           return (
-            <div 
+            <div
               key={s.id}
               onClick={() => isActive && navigate(`/pyqs/${s.id}`)}
-              className={`relative p-6 rounded-2xl border transition-all h-52 flex flex-col justify-between group
-                ${isActive 
-                  ? 'bg-surface border-white/10 hover:border-white/20 hover:bg-[#252c3e] cursor-pointer' 
+              className={`relative p-3 rounded-2xl border transition-all h-40 flex flex-col justify-between group
+                ${isActive
+                  ? 'bg-surface border-white/10 hover:border-white/20 hover:bg-[#252c3e] cursor-pointer'
                   : 'bg-[#151a28] border-white/5 opacity-70 cursor-not-allowed'
                 }`}
             >
@@ -52,10 +52,10 @@ export default function PYQHub() {
                   ${isActive ? 'bg-white/10 text-white' : 'bg-white/5 text-textMuted'}`}>
                   {index + 1}
                 </div>
-                
+
                 <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wider
-                  ${isActive 
-                    ? 'bg-green-500/10 text-green-400 border border-green-500/20' 
+                  ${isActive
+                    ? 'bg-green-500/10 text-green-400 border border-green-500/20'
                     : 'bg-white/5 text-textMuted border border-white/10'
                   }`}>
                   {isActive ? 'ACTIVE' : 'LOCKED'}
@@ -66,9 +66,6 @@ export default function PYQHub() {
                 <h4 className={`text-xl font-bold mb-1 ${isActive ? 'text-white' : 'text-textMuted'}`}>
                   {s.title} PYQ
                 </h4>
-                <p className="text-sm text-textMuted">
-                  {s.papers}
-                </p>
               </div>
 
               <div className="flex justify-between items-center mt-4">
@@ -76,7 +73,7 @@ export default function PYQHub() {
                   ${isActive ? 'text-primary group-hover:text-white' : 'text-textMuted'}`}>
                   {isActive ? 'View Years' : 'Not Available'}
                 </span>
-                
+
                 {isActive ? (
                   <ArrowRight size={18} className="text-primary group-hover:text-white transition-colors" />
                 ) : (
