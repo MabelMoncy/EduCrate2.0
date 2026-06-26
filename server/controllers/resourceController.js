@@ -3,6 +3,9 @@ import AuditLog from '../models/AuditLog.js';
 import cloudinary from '../config/cloudinary.js';
 import { validatePdfMagicBytes } from '../middlewares/uploadMiddleware.js';
 import { scanBuffer } from '../lib/virusScanner.js';
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+const pdfParse = require('pdf-parse');
 
 // ── Allowlist constants (mirrors client/src/lib/semesterData.js) ──────────────
 const VALID_SEMESTERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'];
@@ -335,6 +338,38 @@ const uploadResource = async (req, res, next) => {
     } catch (scanErr) {
       res.status(400);
       throw new Error(scanErr.message);
+    }
+
+    // ── 5d. Prevent Student PYQ uploads via NLP check ─────────────────────────
+    // If the user is NOT an admin (req.user is not set from protectAdmin), we strictly check text
+    if (!req.user) {
+      try {
+        const pdfData = await pdfParse(file.buffer, { max: 2 }); // only read first 2 pages
+        const text = pdfData.text.toLowerCase();
+        
+        const pyqPatterns = [
+          /question paper/,
+          /pyq/,
+          /previous year/,
+          /maximum marks:/,
+          /max marks:/,
+          /time:\s*3\s*hours/,
+          /end semester examination/,
+          /b\.tech degree examination/
+        ];
+        
+        const isLikelyPYQ = pyqPatterns.some(pattern => pattern.test(text));
+        
+        if (isLikelyPYQ) {
+          res.status(400);
+          throw new Error('Question papers cannot be uploaded as notes. Please upload only study notes.');
+        }
+      } catch (parseErr) {
+        if (parseErr.message.includes('Question papers cannot be uploaded')) {
+          throw parseErr;
+        }
+        console.warn('PDF parse warning:', parseErr.message);
+      }
     }
 
     // ── 6. File size guard ────────────────────────────────────────────────────

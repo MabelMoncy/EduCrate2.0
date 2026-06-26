@@ -9,6 +9,9 @@ import AdminLayout from './pages/admin/AdminLayout';
 import AdminOverview from './pages/admin/AdminOverview';
 import ResourceManagement from './pages/admin/ResourceManagement';
 import SubjectConfiguration from './pages/admin/SubjectConfiguration';
+import PYQManagement from './pages/admin/PYQManagement';
+import Payments from './pages/admin/Payments';
+import Buyers from './pages/admin/Buyers';
 import { useAuth } from './context/AuthContext';
 import SplashScreen from './components/SplashScreen';
 import SignInPrompt from './components/SignInPrompt';
@@ -24,6 +27,13 @@ function AdminRoute({ children }) {
 
   return children;
 }
+
+import { CartProvider } from './context/CartContext';
+import PYQHub from './pages/PYQHub';
+import PYQYears from './pages/PYQYears';
+import PYQSubjects from './pages/PYQSubjects';
+import Cart from './pages/Cart';
+import Account from './pages/Account';
 
 function App() {
   const { isSignedIn, openSignInPrompt } = useAuth();
@@ -44,28 +54,38 @@ function App() {
     <ErrorBoundary>
       {!splashDone && <SplashScreen onFinish={handleSplashFinish} />}
       {splashDone && (
-        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/semester/:id" element={<Semester />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/login" element={<Login />} />
-            <Route
-              path="/admin"
-              element={(
-                <AdminRoute>
-                  <AdminLayout />
-                </AdminRoute>
-              )}
-            >
-              <Route index element={<AdminOverview />} />
-              <Route path="resources" element={<ResourceManagement />} />
-              <Route path="subjects" element={<SubjectConfiguration />} />
-            </Route>
-            {/* Catch-all — must be last */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Router>
+        <CartProvider>
+          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/semester/:id" element={<Semester />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/pyqs" element={<PYQHub />} />
+              <Route path="/pyqs/:semId" element={<PYQYears />} />
+              <Route path="/pyqs/:semId/:year" element={<PYQSubjects />} />
+              <Route path="/cart" element={<Cart />} />
+              <Route path="/account" element={<Account />} />
+              <Route
+                path="/admin"
+                element={(
+                  <AdminRoute>
+                    <AdminLayout />
+                  </AdminRoute>
+                )}
+              >
+                <Route index element={<AdminOverview />} />
+                <Route path="resources" element={<ResourceManagement />} />
+                <Route path="subjects" element={<SubjectConfiguration />} />
+                <Route path="pyqs" element={<PYQManagement />} />
+                <Route path="payments" element={<Payments />} />
+                <Route path="buyers" element={<Buyers />} />
+              </Route>
+              {/* Catch-all — must be last */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Router>
+        </CartProvider>
       )}
       <SignInPrompt />
     </ErrorBoundary>
