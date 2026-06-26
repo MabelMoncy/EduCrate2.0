@@ -1,16 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { X, Loader2, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { Document, Page, pdfjs } from 'react-pdf';
+
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString();
 
 export default function PYQViewerModal({ pyq, onClose }) {
   const { firebaseUser } = useAuth();
   const [url, setUrl] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [timeLeft, setTimeLeft] = useState('');
+  const [numPages, setNumPages] = useState(null);
+
+  function onDocumentLoadSuccess({ numPages }) {
+    setNumPages(numPages);
+  }
 
   useEffect(() => {
-    let timer;
     const fetchUrl = async () => {
       try {
         setLoading(true);
@@ -29,21 +38,6 @@ export default function PYQViewerModal({ pyq, onClose }) {
         
         const data = await res.json();
         setUrl(data.url);
-        
-        // Setup countdown
-        const expiry = data.expiresAt * 1000;
-        timer = setInterval(() => {
-          const now = Date.now();
-          const diff = expiry - now;
-          if (diff <= 0) {
-            setTimeLeft('Expired');
-            clearInterval(timer);
-          } else {
-            const minutes = Math.floor(diff / 60000);
-            const seconds = Math.floor((diff % 60000) / 1000);
-            setTimeLeft(`${minutes}:${seconds.toString().padStart(2, '0')}`);
-          }
-        }, 1000);
 
       } catch (err) {
         setError(err.message);
@@ -54,7 +48,6 @@ export default function PYQViewerModal({ pyq, onClose }) {
     
     fetchUrl();
     
-    return () => clearInterval(timer);
   }, [pyq, firebaseUser]);
 
   // Prevent right click
@@ -79,13 +72,6 @@ export default function PYQViewerModal({ pyq, onClose }) {
           </div>
           
           <div className="flex items-center gap-6">
-            {timeLeft && (
-              <div className="text-center">
-                <p className="text-[10px] text-textMuted uppercase tracking-wider">Session Expires In</p>
-                <p className="text-amber-400 font-mono font-bold">{timeLeft}</p>
-              </div>
-            )}
-            
             <button 
               onClick={onClose}
               className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white transition-colors"
@@ -109,25 +95,36 @@ export default function PYQViewerModal({ pyq, onClose }) {
               <p className="text-textMuted">{error}</p>
             </div>
           ) : (
-            <div className="relative w-full h-full">
-              {/* Overlay to block interaction/right clicks on the iframe if possible, though we want scrolling */}
-              {/* Note: Google Drive PDF viewer allows scrolling even with an overlay sometimes, but native PDF viewer might block scrolling. 
-                  We'll use standard iframe without overlay, but with sandbox attributes. */}
-              <iframe
-                src={`${url}#toolbar=0&navpanes=0&scrollbar=0`}
-                className="w-full h-full border-0 select-none"
-                sandbox="allow-same-origin allow-scripts"
-                title="Secure PDF Viewer"
-                style={{ pointerEvents: 'auto' }}
-              />
-              
-              {/* Print-block CSS */}
-              <style dangerouslySetInnerHTML={{__html: `
-                @media print {
-                  body { display: none !important; }
-                }
-              `}} />
-            </div>
+              <div className="relative w-full h-full overflow-auto bg-gray-100 flex flex-col items-center py-8">
+                <Document
+                  file={url}
+                  onLoadSuccess={onDocumentLoadSuccess}
+                  loading={
+                    <div className="flex flex-col items-center justify-center mt-20">
+                      <Loader2 className="animate-spin text-gray-400 mb-4" size={40} />
+                      <p className="text-gray-500 font-medium">Loading document secure viewer...</p>
+                    </div>
+                  }
+                  error={
+                    <div className="text-center mt-20 text-red-500 flex flex-col items-center">
+                      <ShieldAlert className="mb-4" size={48} />
+                      <p>Failed to load secure PDF document.</p>
+                    </div>
+                  }
+                  className="flex flex-col items-center select-none pointer-events-none"
+                >
+                  {Array.from(new Array(numPages), (el, index) => (
+                    <Page 
+                      key={`page_${index + 1}`} 
+                      pageNumber={index + 1} 
+                      className="mb-8 shadow-2xl"
+                      renderTextLayer={false} 
+                      renderAnnotationLayer={false} 
+                      width={Math.min(window.innerWidth * 0.8, 900)} 
+                    />
+                  ))}
+                </Document>
+              </div>
           )}
         </div>
       </div>

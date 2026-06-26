@@ -103,7 +103,8 @@ export default function Cart() {
         },
         theme: {
           color: '#6366f1' // Indigo
-        }
+        },
+        config_display_id: import.meta.env.VITE_RAZORPAY_CONFIG_ID
       };
 
       const paymentObject = new window.Razorpay(options);
