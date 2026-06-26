@@ -49,8 +49,11 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           </button>
 
           <button
-            className="w-full flex items-center gap-3 px-4 py-3 text-textMuted hover:bg-white/5 rounded-lg transition-colors"
-            onClick={() => handleNav('/')}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-colors ${location.pathname.startsWith('/library')
+              ? 'bg-[#171c2c] text-primary border-l-2 border-primary rounded-r-lg'
+              : 'text-textMuted hover:bg-white/5'
+              }`}
+            onClick={() => handleNav('/library')}
           >
             <BookOpen size={20} />
             Library

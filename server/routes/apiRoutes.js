@@ -9,7 +9,7 @@ import {
 } from '../controllers/resourceController.js';
 import { loginAdmin, logoutAdmin } from '../controllers/authController.js';
 import { protectAdmin } from '../middlewares/authMiddleware.js';
-import { protectAdminOrUser } from '../middlewares/protectUser.js';
+import { protectAdminOrUser, protectUser } from '../middlewares/protectUser.js';
 import { protectStudent } from '../middlewares/protectStudent.js';
 import upload from '../middlewares/uploadMiddleware.js';
 
@@ -52,7 +52,7 @@ router.route('/resources')
   .post(uploadRateLimit, protectAdminOrUser, upload.single('file'), uploadResource); // H1/H8 — authenticated upload with rate limit
 
 router.route('/resources/:id')
-  .delete(protectAdmin, deleteResource);
+  .delete(protectAdminOrUser, deleteResource);
 
 router.patch('/resources/:id/pin', protectAdmin, updateResourcePin);
 router.get('/resources/:id/file-url', protectAdminOrUser, getResourceFileUrl); // signed file URLs require authentication
@@ -64,6 +64,16 @@ router.route('/pyq')
 
 router.delete('/pyq/:id', protectAdmin, deletePYQ);
 router.get('/pyq/:id/view-url', protectStudent, getPYQViewUrl);
+router.get('/pyq/me/purchased', protectStudent, getMyPYQs); // Alias route
+
+// ── Library Routes (Bookmarks / Uploads / PYQs) ────────────────────────────
+import { toggleBookmark, getMyBookmarks, getMyUploads } from '../controllers/resourceController.js';
+import { getMyPYQs } from '../controllers/pyqController.js';
+
+router.post('/resources/:id/bookmark', protectStudent, toggleBookmark);
+router.get('/students/me/bookmarks', protectStudent, getMyBookmarks);
+router.get('/resources/me/uploads', protectUser, getMyUploads); // Firebase user only
+router.get('/pyqs/me/purchased', protectStudent, getMyPYQs);
 
 // ── Order Routes ───────────────────────────────────────────────────────────
 router.post('/orders/create', protectStudent, createOrder);

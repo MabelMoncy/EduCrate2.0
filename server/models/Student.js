@@ -42,6 +42,12 @@ const studentSchema = mongoose.Schema(
         },
       },
     ],
+    savedResources: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Resource',
+      },
+    ],
   },
   {
     timestamps: true,

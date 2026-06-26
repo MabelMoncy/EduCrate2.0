@@ -1,5 +1,6 @@
 import Resource from '../models/Resource.js';
 import AuditLog from '../models/AuditLog.js';
+import Student from '../models/Student.js';
 import cloudinary from '../config/cloudinary.js';
 import { validatePdfMagicBytes } from '../middlewares/uploadMiddleware.js';
 import { scanBuffer } from '../lib/virusScanner.js';
@@ -435,12 +436,20 @@ const deleteResource = async (req, res, next) => {
       throw new Error('Resource not found');
     }
 
+    const isAdmin = !!req.user;
+    const isOwner = req.firebaseUser && resource.uploadedBy === req.firebaseUser.uid;
+    
+    if (!isAdmin && !isOwner) {
+       res.status(403);
+       throw new Error('Not authorized to delete this resource');
+    }
+
     // ── Audit log — record deletion before it executes (H5) ─────────────────────
     await AuditLog.create({
       action: 'DELETE',
       resourceId: resource._id,
       resourceTitle: resource.title,
-      performedBy: req.user._id,   // set by protectAdmin middleware
+      performedBy: isAdmin ? req.user._id : req.firebaseUser.uid,
     });
 
     // ── Delete from Cloudinary using the stored public_id ────────────────────
@@ -513,6 +522,67 @@ const updateResourcePin = async (req, res, next) => {
   }
 };
 
+// ── @desc    Toggle bookmark                                               ────
+// ── @route   POST /api/resources/:id/bookmark                              ────
+// ── @access  Student                                                       ────
+const toggleBookmark = async (req, res, next) => {
+  try {
+    const resource = await Resource.findById(req.params.id);
+    if (!resource) {
+      res.status(404);
+      throw new Error('Resource not found');
+    }
+    
+    const student = await Student.findOne({ firebaseUid: req.student.firebaseUid });
+    if (!student) {
+      res.status(404);
+      throw new Error('Student not found');
+    }
+    
+    if (!Array.isArray(student.savedResources)) {
+      student.savedResources = [];
+    }
+    
+    const isBookmarked = student.savedResources.some(id => id.toString() === resource._id.toString());
+    
+    if (isBookmarked) {
+      student.savedResources = student.savedResources.filter(id => id.toString() !== resource._id.toString());
+    } else {
+      student.savedResources.push(resource._id);
+    }
+    
+    await student.save();
+    res.json({ isBookmarked: !isBookmarked });
+  } catch(error) {
+    next(error);
+  }
+};
+
+// ── @desc    Get My Bookmarks                                              ────
+// ── @route   GET /api/students/me/bookmarks                                ────
+// ── @access  Student                                                       ────
+const getMyBookmarks = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ firebaseUid: req.student.firebaseUid })
+      .populate('savedResources');
+    res.json(student.savedResources || []);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── @desc    Get My Uploads                                                ────
+// ── @route   GET /api/resources/my-uploads                                 ────
+// ── @access  Firebase User                                                 ────
+const getMyUploads = async (req, res, next) => {
+  try {
+    const resources = await Resource.find({ uploadedBy: req.firebaseUser.uid }).sort({ createdAt: -1 });
+    res.json(resources);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export {
   buildResourceQuery,
   getResources,
@@ -520,4 +590,8 @@ export {
   uploadResource,
   deleteResource,
   updateResourcePin,
+  toggleBookmark,
+  getMyBookmarks,
+  getMyUploads,
 };
+

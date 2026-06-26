@@ -99,14 +99,28 @@ export const protectUser = async (req, res, next) => {
  */
 export const protectAdminOrUser = async (req, res, next) => {
     try {
+        let authFound = false;
+        
         const adminUser = await verifyAdminCookie(req);
         if (adminUser) {
             req.user = adminUser;
+            authFound = true;
+        }
+
+        if (getBearerToken(req)) {
+            try {
+                req.firebaseUser = await verifyFirebaseUser(req);
+                authFound = true;
+            } catch (err) {
+                if (!authFound) throw err;
+            }
+        }
+        
+        if (authFound) {
             return next();
         }
 
-        req.firebaseUser = await verifyFirebaseUser(req);
-        return next();
+        throw new Error('Authentication required. Please sign in to continue.');
     } catch (err) {
         if (res.statusCode === 200) res.status(err.statusCode || 401);
         return next(
