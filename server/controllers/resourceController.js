@@ -5,6 +5,7 @@ import cloudinary from '../config/cloudinary.js';
 import { validatePdfMagicBytes } from '../middlewares/uploadMiddleware.js';
 import { scanBuffer } from '../lib/virusScanner.js';
 import { createRequire } from 'node:module';
+import { uploadToCloudinary } from '../lib/cloudinaryUtils.js';
 const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse');
 
@@ -194,32 +195,7 @@ const buildResourceQuery = ({ semester, isPinned, subject, type, search } = {}) 
  */
 const sanitise = (str) => str.replace(/[^a-zA-Z0-9\-_]/g, '_');
 
-/**
- * Uploads a file buffer to Cloudinary using upload_stream.
- * Returns the full Cloudinary upload result (including secure_url & public_id).
- *
- * @param {Buffer} buffer       — file buffer from multer memoryStorage
- * @param {string} folder       — Cloudinary folder path  e.g. 'S4/notes/Operating_Systems'
- * @param {string} publicId     — Cloudinary public_id    e.g. '1716000000000_notes.pdf'
- * @returns {Promise<object>}   — Cloudinary upload result
- */
-const uploadToCloudinary = (buffer, folder, publicId) =>
-  new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        resource_type: 'raw',   // treat as raw binary — required for PDFs
-        folder,
-        public_id: publicId,
-        format: 'pdf',   // preserve .pdf extension in the URL
-        overwrite: false,   // never silently replace an existing file
-      },
-      (error, result) => {
-        if (error) return reject(error);
-        resolve(result);
-      }
-    );
-    stream.end(buffer);
-  });
+
 
 // ── @desc    Get resources (supports filtering by semester, type, subject) ────
 // ── @route   GET /api/resources                                            ────
