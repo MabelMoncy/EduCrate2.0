@@ -1,4 +1,5 @@
-import admin from 'firebase-admin';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 
 /**
  * Initializes the Firebase Admin SDK once using service account env vars.
@@ -10,7 +11,7 @@ import admin from 'firebase-admin';
  *   FIREBASE_PRIVATE_KEY   (paste the full key including -----BEGIN/END-----, with \n for newlines)
  */
 const initFirebaseAdmin = () => {
-    if (admin.apps.length > 0) return true; // already initialized
+    if (getApps().length > 0) return true; // already initialized
 
     const { FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY } = process.env;
 
@@ -21,8 +22,8 @@ const initFirebaseAdmin = () => {
         return false;
     }
 
-    admin.initializeApp({
-        credential: admin.credential.cert({
+    initializeApp({
+        credential: cert({
             projectId:   FIREBASE_PROJECT_ID,
             clientEmail: FIREBASE_CLIENT_EMAIL,
             // .env stores \n as literal \\n — convert back to real newlines
@@ -30,9 +31,15 @@ const initFirebaseAdmin = () => {
         }),
     });
 
-    console.log('[Firebase] Admin SDK initialized ✓');    return true;
+    console.log('[Firebase] Admin SDK initialized ✓');
+    return true;
 };
 
-const isFirebaseAdminReady = () => admin.apps.length > 0;
+const isFirebaseAdminReady = () => getApps().length > 0;
+
+// Export an admin-like object to minimize changes in other files
+const admin = {
+    auth: getAuth
+};
 
 export { admin, initFirebaseAdmin, isFirebaseAdminReady };
