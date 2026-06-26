@@ -14,7 +14,7 @@ import { protectStudent } from '../middlewares/protectStudent.js';
 import upload from '../middlewares/uploadMiddleware.js';
 
 import { uploadPYQ, listPYQs, deletePYQ, getPYQViewUrl } from '../controllers/pyqController.js';
-import { createOrder, verifyPayment, getMyOrders, getAdminPayments, getAdminBuyers } from '../controllers/orderController.js';
+import { createOrder, verifyPayment, getMyOrders, getAdminPayments, getAdminBuyers, razorpayWebhook } from '../controllers/orderController.js';
 
 const router = express.Router();
 
@@ -68,6 +68,7 @@ router.get('/pyq/:id/view-url', protectStudent, getPYQViewUrl);
 // ── Order Routes ───────────────────────────────────────────────────────────
 router.post('/orders/create', protectStudent, createOrder);
 router.post('/orders/verify', protectStudent, verifyPayment);
+router.post('/orders/webhook', razorpayWebhook);
 router.get('/orders/my', protectStudent, getMyOrders);
 
 // ── Admin Payments/Buyers Routes ───────────────────────────────────────────

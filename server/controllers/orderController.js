@@ -3,6 +3,59 @@ import Razorpay from 'razorpay';
 import Order from '../models/Order.js';
 import PYQ from '../models/PYQ.js';
 import Student from '../models/Student.js';
+import { getSubjectsForSemester } from '../lib/semesterData.js';
+
+export const razorpayWebhook = async (req, res, next) => {
+  try {
+    const event = req.body.event;
+    
+    // Process payment.captured event
+    if (event === 'payment.captured' || event === 'order.paid') {
+      // In payment.captured, payload.payment.entity has order_id
+      // In order.paid, payload.order.entity has id
+      const entity = req.body.payload.payment ? req.body.payload.payment.entity : req.body.payload.order.entity;
+      const rzpOrderId = event === 'order.paid' ? entity.id : entity.order_id;
+      const rzpPaymentId = event === 'payment.captured' ? entity.id : null;
+      
+      const order = await Order.findOne({ razorpayOrderId: rzpOrderId });
+      
+      if (order && order.status !== 'paid') {
+        const session = await Order.startSession();
+        session.startTransaction();
+        
+        try {
+          order.status = 'paid';
+          if (rzpPaymentId) order.razorpayPaymentId = rzpPaymentId;
+          await order.save({ session });
+
+          const purchasedItems = order.items.map(item => ({
+            pyqId: item.pyqId,
+            orderId: order._id,
+            paidAt: new Date(),
+            amount: item.price,
+          }));
+
+          await Student.findByIdAndUpdate(
+            order.studentId, 
+            { $push: { purchasedPYQs: { $each: purchasedItems } } },
+            { session }
+          );
+
+          await session.commitTransaction();
+          session.endSession();
+        } catch (txnError) {
+          await session.abortTransaction();
+          session.endSession();
+          console.error('Webhook transaction error:', txnError);
+        }
+      }
+    }
+    res.json({ status: 'ok' });
+  } catch (error) {
+    console.error('Webhook processing error:', error);
+    res.status(500).json({ status: 'error' });
+  }
+};
 
 let razorpayInstance = null;
 const getRazorpay = () => {
@@ -28,6 +81,15 @@ export const createOrder = async (req, res, next) => {
       throw new Error('No PYQs selected');
     }
 
+    // Check if student already owns any of these PYQs
+    const alreadyPurchasedIds = student.purchasedPYQs.map(p => p.pyqId.toString());
+    const hasDuplicates = pyqIds.some(id => alreadyPurchasedIds.includes(id.toString()));
+    
+    if (hasDuplicates) {
+      res.status(400);
+      throw new Error('Your cart contains PYQs you already own. Please remove them to proceed.');
+    }
+
     const pyqs = await PYQ.find({ _id: { $in: pyqIds } });
     if (pyqs.length !== pyqIds.length) {
       res.status(400);
@@ -41,15 +103,15 @@ export const createOrder = async (req, res, next) => {
     });
 
     let discount = 0;
-    // Check if discount applies (buying all subjects for a specific year in a semester)
+    // Bundle Discount: 10% off if buying PYQs for ALL subjects in a given semester and year
     if (semester && year) {
-      const allYearPYQs = await PYQ.find({ semester, year });
-      if (allYearPYQs.length > 0 && allYearPYQs.length === pyqs.length) {
-        // They are buying all available PYQs for this semester and year
-        const matchesAll = allYearPYQs.every(ayp => pyqIds.includes(ayp._id.toString()));
-        if (matchesAll) {
-          discount = Math.floor(subtotal * 0.10); // 10% discount
-        }
+      const allSubjectsInSyllabus = getSubjectsForSemester(semester);
+      
+      const semesterPYQs = pyqs.filter(p => p.semester === semester && p.year === year);
+      const distinctSubjectsInCart = new Set(semesterPYQs.map(p => p.subject));
+
+      if (allSubjectsInSyllabus.length > 0 && distinctSubjectsInCart.size === allSubjectsInSyllabus.length) {
+        discount = Math.floor(subtotal * 0.10); // 10% discount
       }
     }
 
@@ -121,6 +183,14 @@ export const verifyPayment = async (req, res, next) => {
       throw new Error('Payment verification failed - invalid signature');
     }
 
+    const rzp = getRazorpay();
+    const payment = await rzp.payments.fetch(razorpay_payment_id);
+    
+    if (payment.status !== 'captured') {
+      res.status(400);
+      throw new Error('Payment not captured by gateway');
+    }
+
     const order = await Order.findOne({ razorpayOrderId: razorpay_order_id });
     if (!order) {
       res.status(404);
@@ -130,25 +200,45 @@ export const verifyPayment = async (req, res, next) => {
     if (order.status === 'paid') {
       return res.json({ message: 'Order already processed' });
     }
+    
+    if (payment.amount !== order.totalAmount * 100) {
+      res.status(400);
+      throw new Error('Payment amount mismatch');
+    }
 
-    order.status = 'paid';
-    order.razorpayPaymentId = razorpay_payment_id;
-    order.razorpaySignature = razorpay_signature;
-    await order.save();
+    // Start MongoDB Session for transaction
+    const session = await Order.startSession();
+    session.startTransaction();
 
-    // Add PYQs to student
-    const purchasedItems = order.items.map(item => ({
-      pyqId: item.pyqId,
-      orderId: order._id,
-      paidAt: new Date(),
-      amount: item.price,
-    }));
+    try {
+      order.status = 'paid';
+      order.razorpayPaymentId = razorpay_payment_id;
+      order.razorpaySignature = razorpay_signature;
+      await order.save({ session });
 
-    await Student.findByIdAndUpdate(student._id, {
-      $push: { purchasedPYQs: { $each: purchasedItems } },
-    });
+      // Add PYQs to student
+      const purchasedItems = order.items.map(item => ({
+        pyqId: item.pyqId,
+        orderId: order._id,
+        paidAt: new Date(),
+        amount: item.price,
+      }));
 
-    res.json({ message: 'Payment verified and PYQs unlocked', order });
+      await Student.findByIdAndUpdate(
+        student._id, 
+        { $push: { purchasedPYQs: { $each: purchasedItems } } },
+        { session }
+      );
+
+      await session.commitTransaction();
+      session.endSession();
+
+      res.json({ message: 'Payment verified and PYQs unlocked', order });
+    } catch (txnError) {
+      await session.abortTransaction();
+      session.endSession();
+      throw txnError;
+    }
   } catch (error) {
     next(error);
   }

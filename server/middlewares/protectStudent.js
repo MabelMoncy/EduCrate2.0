@@ -22,6 +22,16 @@ export const protectStudent = async (req, res, next) => {
     
     // Find or create student
     let student = await Student.findOne({ firebaseUid: decodedToken.uid });
+    
+    if (!student && decodedToken.email) {
+      // Fallback: Check if student exists by email (happens if Firebase user was deleted and re-created)
+      student = await Student.findOne({ email: decodedToken.email });
+      if (student) {
+        student.firebaseUid = decodedToken.uid;
+        await student.save();
+      }
+    }
+
     if (!student) {
       student = await Student.create({
         firebaseUid: decodedToken.uid,
