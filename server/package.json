@@ -29,5 +29,12 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.0"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
+  },
+  "allowScripts": {
+    "@firebase/util@1.15.1": true,
+    "protobufjs@7.6.4": true
   }
 }
