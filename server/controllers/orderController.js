@@ -7,6 +7,23 @@ import { getSubjectsForSemester } from '../lib/semesterData.js';
 
 export const razorpayWebhook = async (req, res, next) => {
   try {
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    if (!secret) {
+      console.error('Webhook secret not configured');
+      return res.status(500).json({ status: 'error' });
+    }
+
+    const signature = req.headers['x-razorpay-signature'];
+    const expectedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(JSON.stringify(req.body))
+      .digest('hex');
+
+    if (signature !== expectedSignature) {
+      console.error('Webhook signature mismatch');
+      return res.status(400).json({ status: 'invalid signature' });
+    }
+
     const event = req.body.event;
     
     // Process payment.captured event
@@ -28,18 +45,23 @@ export const razorpayWebhook = async (req, res, next) => {
           if (rzpPaymentId) order.razorpayPaymentId = rzpPaymentId;
           await order.save({ session });
 
-          const purchasedItems = order.items.map(item => ({
-            pyqId: item.pyqId,
-            orderId: order._id,
-            paidAt: new Date(),
-            amount: item.price,
-          }));
+          const studentToUpdate = await Student.findById(order.studentId).session(session);
+          if (studentToUpdate) {
+            const alreadyPurchasedIds = studentToUpdate.purchasedPYQs.map(p => p.pyqId.toString());
+            const newPurchasedItems = order.items
+              .filter(item => !alreadyPurchasedIds.includes(item.pyqId.toString()))
+              .map(item => ({
+                pyqId: item.pyqId,
+                orderId: order._id,
+                paidAt: new Date(),
+                amount: item.price,
+              }));
 
-          await Student.findByIdAndUpdate(
-            order.studentId, 
-            { $push: { purchasedPYQs: { $each: purchasedItems } } },
-            { session }
-          );
+            if (newPurchasedItems.length > 0) {
+              studentToUpdate.purchasedPYQs.push(...newPurchasedItems);
+              await studentToUpdate.save({ session });
+            }
+          }
 
           await session.commitTransaction();
           session.endSession();
@@ -81,17 +103,20 @@ export const createOrder = async (req, res, next) => {
       throw new Error('No PYQs selected');
     }
 
+    // Remove duplicate pyqIds from request payload
+    const uniquePyqIds = [...new Set(pyqIds)];
+
     // Check if student already owns any of these PYQs
     const alreadyPurchasedIds = student.purchasedPYQs.map(p => p.pyqId.toString());
-    const hasDuplicates = pyqIds.some(id => alreadyPurchasedIds.includes(id.toString()));
+    const hasDuplicates = uniquePyqIds.some(id => alreadyPurchasedIds.includes(id.toString()));
     
     if (hasDuplicates) {
       res.status(400);
       throw new Error('Your cart contains PYQs you already own. Please remove them to proceed.');
     }
 
-    const pyqs = await PYQ.find({ _id: { $in: pyqIds } });
-    if (pyqs.length !== pyqIds.length) {
+    const pyqs = await PYQ.find({ _id: { $in: uniquePyqIds } });
+    if (pyqs.length !== uniquePyqIds.length) {
       res.status(400);
       throw new Error('One or more PYQs not found');
     }
@@ -111,7 +136,9 @@ export const createOrder = async (req, res, next) => {
       const distinctSubjectsInCart = new Set(semesterPYQs.map(p => p.subject));
 
       if (allSubjectsInSyllabus.length > 0 && distinctSubjectsInCart.size === allSubjectsInSyllabus.length) {
-        discount = Math.floor(subtotal * 0.10); // 10% discount
+        // Calculate the sum of the prices of the PYQs that make up the bundle
+        const bundlePriceSum = semesterPYQs.reduce((acc, p) => acc + p.price, 0);
+        discount = Math.floor(bundlePriceSum * 0.10); // 10% discount on the bundle portion ONLY
       }
     }
 
@@ -216,19 +243,21 @@ export const verifyPayment = async (req, res, next) => {
       order.razorpaySignature = razorpay_signature;
       await order.save({ session });
 
-      // Add PYQs to student
-      const purchasedItems = order.items.map(item => ({
-        pyqId: item.pyqId,
-        orderId: order._id,
-        paidAt: new Date(),
-        amount: item.price,
-      }));
+      // Add PYQs to student avoiding duplicates
+      const alreadyPurchasedIds = student.purchasedPYQs.map(p => p.pyqId.toString());
+      const newPurchasedItems = order.items
+        .filter(item => !alreadyPurchasedIds.includes(item.pyqId.toString()))
+        .map(item => ({
+          pyqId: item.pyqId,
+          orderId: order._id,
+          paidAt: new Date(),
+          amount: item.price,
+        }));
 
-      await Student.findByIdAndUpdate(
-        student._id, 
-        { $push: { purchasedPYQs: { $each: purchasedItems } } },
-        { session }
-      );
+      if (newPurchasedItems.length > 0) {
+        student.purchasedPYQs.push(...newPurchasedItems);
+        await student.save({ session });
+      }
 
       await session.commitTransaction();
       session.endSession();

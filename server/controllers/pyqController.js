@@ -2,28 +2,13 @@ import PYQ from '../models/PYQ.js';
 import Student from '../models/Student.js';
 import cloudinary from '../config/cloudinary.js';
 import { validatePdfMagicBytes } from '../middlewares/uploadMiddleware.js';
+import { uploadToCloudinary } from '../lib/cloudinaryUtils.js';
 
 const VALID_SEMESTERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'];
 
 const sanitise = (str) => str.replace(/[^a-zA-Z0-9\-_]/g, '_');
 
-const uploadToCloudinary = (buffer, folder, publicId) =>
-  new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      {
-        resource_type: 'raw',
-        folder,
-        public_id: publicId,
-        format: 'pdf',
-        overwrite: false,
-      },
-      (error, result) => {
-        if (error) return reject(error);
-        resolve(result);
-      }
-    );
-    stream.end(buffer);
-  });
+
 
 // @desc    Upload a new PYQ (Admin only)
 // @route   POST /api/pyq
