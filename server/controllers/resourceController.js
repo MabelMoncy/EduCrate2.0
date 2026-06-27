@@ -431,7 +431,7 @@ const deleteResource = async (req, res, next) => {
   try {
     const resource = await Resource.findById(req.params.id);
 
-    if (!resource) {
+    if (!resource || resource.isDeleted) {
       res.status(404);
       throw new Error('Resource not found');
     }
@@ -452,11 +452,13 @@ const deleteResource = async (req, res, next) => {
       performedBy: isAdmin ? req.user._id : req.firebaseUser.uid,
     });
 
-    // Soft delete
+    // ── Soft delete: mark as deleted so it disappears from the frontend instantly.
+    // Physical Cloudinary + MongoDB removal is handled by the daily CRON job
+    // in cron/cleanup.js after a 24-hour grace period (allows accidental-delete recovery).
     resource.isDeleted = true;
     await resource.save();
 
-    // Clear cache to reflect deletion
+    // Clear cache so the deleted resource disappears from all frontend views immediately
     clearCache('/resources');
 
     res.json({ message: 'Resource moved to trash successfully' });

@@ -1,62 +1,92 @@
+/**
+ * cron/cleanup.js
+ *
+ * Scheduled background job that permanently removes soft-deleted Resources and PYQs
+ * from both Cloudinary (physical file) and MongoDB (database record).
+ *
+ * Runs every day at 3:00 AM. Only processes records where:
+ *  - isDeleted === true
+ *  - updatedAt is older than 24 hours (grace period for accidental-delete recovery)
+ *
+ * This is the ONLY place in the codebase that calls cloudinary.uploader.destroy
+ * and findByIdAndDelete for Resources/PYQs. The admin delete route only soft-deletes.
+ */
+
 import cron from 'node-cron';
 import Resource from '../models/Resource.js';
 import PYQ from '../models/PYQ.js';
 import cloudinary from '../config/cloudinary.js';
 
-const deleteFromCloudinary = async (publicId) => {
+/**
+ * Attempts to destroy a Cloudinary asset, trying 'image' first (new uploads),
+ * then 'raw' (legacy uploads), then 'raw' without .pdf extension.
+ */
+const destroyCloudinaryAsset = async (publicId) => {
   if (!publicId) return;
   try {
-    // Try image first
+    // New uploads: resource_type 'image'
     let result = await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
-    if (result.result === 'not found') {
-      result = await cloudinary.uploader.destroy(publicId, { resource_type: 'raw' });
-    }
-    if (result.result === 'not found' && publicId.endsWith('.pdf')) {
+    if (result.result === 'ok') return;
+
+    // Legacy uploads: resource_type 'raw'
+    result = await cloudinary.uploader.destroy(publicId, { resource_type: 'raw' });
+    if (result.result === 'ok') return;
+
+    // Older legacy: raw without .pdf extension
+    if (publicId.endsWith('.pdf')) {
       await cloudinary.uploader.destroy(publicId.slice(0, -4), { resource_type: 'raw' });
     }
   } catch (err) {
-    console.error(`[CRON] Failed to delete Cloudinary asset ${publicId}:`, err.message);
+    console.error(`[CRON] Cloudinary destroy failed for ${publicId}:`, err.message);
   }
 };
 
-const cleanupDeletedRecords = async () => {
-  console.log('[CRON] Starting cleanup of soft-deleted records...');
-  
-  // Find records deleted more than 7 days ago
-  const thirtyDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+const cleanupSoftDeletedRecords = async () => {
+  console.log('[CRON] Starting daily cleanup of soft-deleted records...');
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
 
   try {
-    const resourcesToHardDelete = await Resource.find({ 
-      isDeleted: true, 
-      updatedAt: { $lte: thirtyDaysAgo } 
+    // ── Resources ────────────────────────────────────────────────────────────
+    const deletedResources = await Resource.find({
+      isDeleted: true,
+      updatedAt: { $lte: cutoff },
     });
 
-    for (const resource of resourcesToHardDelete) {
-      await deleteFromCloudinary(resource.cloudinaryPublicId);
+    let resourceCount = 0;
+    for (const resource of deletedResources) {
+      await destroyCloudinaryAsset(resource.cloudinaryPublicId);
       await Resource.deleteOne({ _id: resource._id });
+      resourceCount++;
     }
-    
-    console.log(`[CRON] Cleaned up ${resourcesToHardDelete.length} old resources.`);
+    console.log(`[CRON] Permanently removed ${resourceCount} resources.`);
 
-    const pyqsToHardDelete = await PYQ.find({ 
-      isDeleted: true, 
-      updatedAt: { $lte: thirtyDaysAgo } 
+    // ── PYQs ─────────────────────────────────────────────────────────────────
+    const deletedPYQs = await PYQ.find({
+      isDeleted: true,
+      updatedAt: { $lte: cutoff },
     });
 
-    for (const pyq of pyqsToHardDelete) {
-      await deleteFromCloudinary(pyq.cloudinaryPublicId);
+    let pyqCount = 0;
+    for (const pyq of deletedPYQs) {
+      await destroyCloudinaryAsset(pyq.cloudinaryPublicId);
       await PYQ.deleteOne({ _id: pyq._id });
+      pyqCount++;
     }
-    
-    console.log(`[CRON] Cleaned up ${pyqsToHardDelete.length} old PYQs.`);
+    console.log(`[CRON] Permanently removed ${pyqCount} PYQs.`);
 
   } catch (error) {
-    console.error('[CRON] Error during cleanup:', error.message);
+    console.error('[CRON] Cleanup job error:', error.message);
   }
 };
 
-// Run every Sunday at 3:00 AM
+/**
+ * Initialises the scheduled cleanup job.
+ * Schedule: every day at 3:00 AM ('0 3 * * *')
+ * To test manually, temporarily change to '* * * * *' (every minute).
+ */
 export const initCronJobs = () => {
-  cron.schedule('0 3 * * 0', cleanupDeletedRecords);
-  console.log('[CRON] Scheduled cleanup job for Sunday 3:00 AM');
+  cron.schedule('0 3 * * *', cleanupSoftDeletedRecords, {
+    timezone: 'Asia/Kolkata', // IST
+  });
+  console.log('[CRON] Daily cleanup job scheduled for 03:00 IST');
 };

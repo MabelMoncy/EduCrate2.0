@@ -74,8 +74,10 @@ export const uploadPYQ = async (req, res, next) => {
 // @access  Public (Metadata only)
 export const listPYQs = async (req, res, next) => {
   try {
-    const { semester, year, subject } = req.query;
-    const query = {};
+    // Fix: destructure ALL needed params including limit and page
+    const { semester, year, subject, limit, page } = req.query;
+    
+    const query = { isDeleted: false }; // Always exclude soft-deleted PYQs
     if (semester) query.semester = semester;
     if (year) query.year = parseInt(year, 10);
     if (subject) query.subject = subject;
@@ -123,12 +125,14 @@ export const deletePYQ = async (req, res, next) => {
   try {
     const pyq = await PYQ.findById(req.params.id);
 
-    if (!pyq) {
+    if (!pyq || pyq.isDeleted) {
       res.status(404);
       throw new Error('PYQ not found');
     }
 
-    // Soft delete
+    // Soft delete: mark as deleted so it disappears from the frontend immediately.
+    // The CRON job in cron/cleanup.js handles physical Cloudinary + MongoDB removal
+    // after a 24-hour grace period.
     pyq.isDeleted = true;
     await pyq.save();
 

@@ -53,8 +53,10 @@ const uploadRateLimit = rateLimit({
 router.post('/auth/login', loginLimiter, loginAdmin);
 router.post('/auth/logout', logoutAdmin);
 
+const resourcesCache = cacheMiddleware(300);
+
 router.route('/resources')
-  .get(cacheMiddleware(300), getResources)                                                          // public catalogue metadata; files still require auth
+  .get(resourcesCache, getResources)                                                          // public catalogue metadata; files still require auth
   .post(uploadRateLimit, protectAdminOrUser, upload.single('file'), uploadResource); // H1/H8 — authenticated upload with rate limit
 
 router.route('/resources/:id')
@@ -63,9 +65,11 @@ router.route('/resources/:id')
 router.patch('/resources/:id/pin', protectAdmin, updateResourcePin);
 router.get('/resources/:id/file-url', protectAdminOrUser, getResourceFileUrl); // signed file URLs require authentication
 
+const pyqCache = cacheMiddleware(300);
+
 // ── PYQ Routes ─────────────────────────────────────────────────────────────
 router.route('/pyq')
-  .get(cacheMiddleware(300), listPYQs)
+  .get(pyqCache, listPYQs)
   .post(uploadRateLimit, protectAdmin, upload.single('file'), uploadPYQ);
 
 router.delete('/pyq/:id', protectAdmin, deletePYQ);

@@ -25,7 +25,11 @@ const SERVER_ROOT = path.resolve(__dirname, '..');
 const CLIENT_ROOT = path.resolve(SERVER_ROOT, '..', 'client');
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3.1 — Authenticated admin DELETE removes resource from MongoDB + Cloudinary
+// 3.1 — Authenticated admin DELETE soft-deletes resource; CRON handles Cloudinary cleanup
+//
+// Architecture: deleteResource sets isDeleted=true (soft delete) so admins can
+// recover data. The CRON job in cron/cleanup.js handles physical deletion from
+// Cloudinary + MongoDB after a 24-hour grace period.
 // ─────────────────────────────────────────────────────────────────────────────
 test('3.1 — deleteResource: deletes from MongoDB and calls Cloudinary destroy', () => {
     const source = readFileSync(
@@ -33,16 +37,24 @@ test('3.1 — deleteResource: deletes from MongoDB and calls Cloudinary destroy'
         'utf8'
     );
 
-    // Must call cloudinary.uploader.destroy to remove from Cloudinary
+    // Soft-delete: controller must set isDeleted = true (not immediately destroy)
     assert.ok(
-        source.includes('cloudinary.uploader.destroy'),
-        'deleteResource must call cloudinary.uploader.destroy to remove the file from Cloudinary'
+        source.includes('isDeleted = true'),
+        'deleteResource must use soft-delete by setting isDeleted = true'
     );
 
-    // Must call Resource.findByIdAndDelete to remove from MongoDB
+    // Physical Cloudinary deletion must happen in the CRON cleanup job, not synchronously
+    const cronSource = readFileSync(
+        path.join(SERVER_ROOT, 'cron', 'cleanup.js'),
+        'utf8'
+    );
     assert.ok(
-        source.includes('findByIdAndDelete'),
-        'deleteResource must call Resource.findByIdAndDelete to remove the document from MongoDB'
+        cronSource.includes('cloudinary.uploader.destroy'),
+        'Physical Cloudinary deletion must be handled in cron/cleanup.js'
+    );
+    assert.ok(
+        cronSource.includes('deleteOne') || cronSource.includes('findByIdAndDelete'),
+        'Permanent MongoDB removal must be handled in cron/cleanup.js'
     );
 
     // The DELETE route must still have protectAdmin on it (existing auth guard preserved)
@@ -58,10 +70,10 @@ test('3.1 — deleteResource: deletes from MongoDB and calls Cloudinary destroy'
         'DELETE /api/resources/:id must keep the protectAdmin or protectAdminOrUser guard'
     );
 
-    // The controller must respond with a success message
+    // The controller must respond with a trash message
     assert.ok(
-        source.includes('Resource deleted successfully'),
-        'deleteResource must return a "Resource deleted successfully" message on success'
+        source.includes('Resource moved to trash') || source.includes('moved to trash'),
+        'deleteResource must return a "moved to trash" message on success'
     );
 });
 
