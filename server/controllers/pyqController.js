@@ -77,9 +77,21 @@ export const listPYQs = async (req, res, next) => {
     if (year) query.year = parseInt(year, 10);
     if (subject) query.subject = subject;
 
-    // Do not return fileUrl or cloudinaryPublicId to unauthenticated users
-    const pyqs = await PYQ.find(query).select('-fileUrl -cloudinaryPublicId').sort({ year: -1, createdAt: -1 });
-    res.json(pyqs);
+    // Fetch PYQs and map to include thumbnailUrl while omitting fileUrl/cloudinaryPublicId
+    const pyqs = await PYQ.find(query).sort({ year: -1, createdAt: -1 });
+    const pyqsWithThumbnails = pyqs.map(doc => {
+      const pyq = doc.toObject();
+      if (pyq.fileUrl) {
+        pyq.thumbnailUrl = pyq.fileUrl
+          .replace('/image/upload/', '/image/upload/w_400,h_300,c_fill,g_north,pg_1/')
+          .replace(/\.pdf$/i, '.jpg');
+      }
+      delete pyq.fileUrl;
+      delete pyq.cloudinaryPublicId;
+      return pyq;
+    });
+
+    res.json(pyqsWithThumbnails);
   } catch (error) {
     next(error);
   }
@@ -98,7 +110,11 @@ export const deletePYQ = async (req, res, next) => {
 
     if (pyq.cloudinaryPublicId) {
       try {
-        let destroyResult = await cloudinary.uploader.destroy(pyq.cloudinaryPublicId, { resource_type: 'raw' });
+        // Try image resource type first (new uploads), fallback to raw (legacy)
+        let destroyResult = await cloudinary.uploader.destroy(pyq.cloudinaryPublicId, { resource_type: 'image' });
+        if (destroyResult.result === 'not found') {
+          destroyResult = await cloudinary.uploader.destroy(pyq.cloudinaryPublicId, { resource_type: 'raw' });
+        }
         if (destroyResult.result === 'not found' && pyq.cloudinaryPublicId.endsWith('.pdf')) {
           await cloudinary.uploader.destroy(pyq.cloudinaryPublicId.slice(0, -4), { resource_type: 'raw' });
         }
@@ -145,7 +161,7 @@ export const getPYQViewUrl = async (req, res, next) => {
       pyq.cloudinaryPublicId,
       'pdf',
       {
-        resource_type: 'raw',
+        resource_type: 'image',
         type: 'upload',
         expires_at: expiresAt,
         // intentionally NOT passing attachment:true
