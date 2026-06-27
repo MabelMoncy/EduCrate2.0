@@ -24,10 +24,8 @@ export default function Account() {
   };
 
   const handleViewPYQ = async (item) => {
-    // item is { pyqId, orderId, paidAt, amount }
-    // We need the full PYQ object to pass to the viewer, but we might only have the ID.
-    // However, we just need the ID to fetch the view URL in the viewer.
-    setPreviewPYQ({ _id: item.pyqId });
+    // item.pyqId is now a populated object containing the full PYQ data
+    setPreviewPYQ(item.pyqId);
   };
 
   return (

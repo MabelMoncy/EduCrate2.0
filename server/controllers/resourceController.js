@@ -238,11 +238,15 @@ const getResourceFileUrl = async (req, res, next) => {
 
     const attachment = req.query.attachment === 'true';
     const expiresAt = Math.floor(Date.now() / 1000) + (10 * 60);
+    
+    // Legacy notes were uploaded as 'raw', newer ones as 'image'
+    const rType = resource.fileUrl && resource.fileUrl.includes('/image/upload/') ? 'image' : 'raw';
+
     const url = cloudinary.utils.private_download_url(
       resource.cloudinaryPublicId,
       'pdf',
       {
-        resource_type: 'raw',
+        resource_type: rType,
         type: 'upload',
         ...(attachment ? { attachment: true } : {}),
         expires_at: expiresAt,
@@ -434,22 +438,28 @@ const deleteResource = async (req, res, next) => {
         const publicId = resource.cloudinaryPublicId;
         console.log('[Delete] Attempting Cloudinary destroy, publicId:', publicId);
 
-        // PDFs uploaded with resource_type:'raw' + format:'pdf' have their
-        // public_id returned WITH the .pdf extension by Cloudinary.
-        // destroy() also needs resource_type:'raw' to target the same asset.
+        // Newer uploads use resource_type: 'image'
         let destroyResult = await cloudinary.uploader.destroy(publicId, {
-          resource_type: 'raw',
+          resource_type: 'image',
         });
-        console.log('[Delete] Cloudinary destroy result:', destroyResult);
+        console.log('[Delete] Cloudinary image destroy result:', destroyResult);
 
-        // If not found, try stripping the .pdf extension (legacy records)
-        if (destroyResult.result === 'not found' && publicId.endsWith('.pdf')) {
-          const idWithoutExt = publicId.slice(0, -4);
-          console.log('[Delete] Retrying without .pdf extension:', idWithoutExt);
-          destroyResult = await cloudinary.uploader.destroy(idWithoutExt, {
+        // Fallback for older 'raw' uploads
+        if (destroyResult.result === 'not found') {
+          destroyResult = await cloudinary.uploader.destroy(publicId, {
             resource_type: 'raw',
           });
-          console.log('[Delete] Retry result:', destroyResult);
+          console.log('[Delete] Cloudinary raw destroy result:', destroyResult);
+
+          // If not found as raw, try stripping the .pdf extension (legacy records)
+          if (destroyResult.result === 'not found' && publicId.endsWith('.pdf')) {
+            const idWithoutExt = publicId.slice(0, -4);
+            console.log('[Delete] Retrying raw without .pdf extension:', idWithoutExt);
+            destroyResult = await cloudinary.uploader.destroy(idWithoutExt, {
+              resource_type: 'raw',
+            });
+            console.log('[Delete] Retry result:', destroyResult);
+          }
         }
 
         if (destroyResult.result !== 'ok') {
