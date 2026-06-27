@@ -12,6 +12,7 @@ import { protectAdmin } from '../middlewares/authMiddleware.js';
 import { protectAdminOrUser, protectUser } from '../middlewares/protectUser.js';
 import { protectStudent } from '../middlewares/protectStudent.js';
 import upload from '../middlewares/uploadMiddleware.js';
+import { cacheMiddleware } from '../lib/cache.js';
 
 import { uploadPYQ, listPYQs, deletePYQ, getPYQViewUrl } from '../controllers/pyqController.js';
 import { createOrder, verifyPayment, getMyOrders, getAdminPayments, getAdminBuyers, razorpayWebhook } from '../controllers/orderController.js';
@@ -53,7 +54,7 @@ router.post('/auth/login', loginLimiter, loginAdmin);
 router.post('/auth/logout', logoutAdmin);
 
 router.route('/resources')
-  .get(getResources)                                                          // public catalogue metadata; files still require auth
+  .get(cacheMiddleware(300), getResources)                                                          // public catalogue metadata; files still require auth
   .post(uploadRateLimit, protectAdminOrUser, upload.single('file'), uploadResource); // H1/H8 — authenticated upload with rate limit
 
 router.route('/resources/:id')
@@ -64,7 +65,7 @@ router.get('/resources/:id/file-url', protectAdminOrUser, getResourceFileUrl); /
 
 // ── PYQ Routes ─────────────────────────────────────────────────────────────
 router.route('/pyq')
-  .get(listPYQs)
+  .get(cacheMiddleware(300), listPYQs)
   .post(uploadRateLimit, protectAdmin, upload.single('file'), uploadPYQ);
 
 router.delete('/pyq/:id', protectAdmin, deletePYQ);

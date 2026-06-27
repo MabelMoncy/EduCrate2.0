@@ -3,6 +3,7 @@ import Student from '../models/Student.js';
 import cloudinary from '../config/cloudinary.js';
 import { validatePdfMagicBytes } from '../middlewares/uploadMiddleware.js';
 import { uploadToCloudinary } from '../lib/cloudinaryUtils.js';
+import { clearCache } from '../lib/cache.js';
 
 const VALID_SEMESTERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'];
 
@@ -60,6 +61,8 @@ export const uploadPYQ = async (req, res, next) => {
       price: price ? parseFloat(price) : 10,
     });
 
+    clearCache('/pyq');
+
     res.status(201).json(pyq);
   } catch (error) {
     next(error);
@@ -77,8 +80,15 @@ export const listPYQs = async (req, res, next) => {
     if (year) query.year = parseInt(year, 10);
     if (subject) query.subject = subject;
 
-    // Fetch PYQs and map to include thumbnailUrl while omitting fileUrl/cloudinaryPublicId
-    const pyqs = await PYQ.find(query).sort({ year: -1, createdAt: -1 });
+    const parsedLimit = Math.min(parseInt(limit, 10) || 100, 100);
+    const parsedPage = Math.max(parseInt(page, 10) || 1, 1);
+    const skip = (parsedPage - 1) * parsedLimit;
+
+    const [pyqs, total] = await Promise.all([
+      PYQ.find(query).sort({ year: -1, semester: 1 }).skip(skip).limit(parsedLimit),
+      PYQ.countDocuments(query)
+    ]);
+
     const pyqsWithThumbnails = pyqs.map(doc => {
       const pyq = doc.toObject();
       if (pyq.fileUrl) {
@@ -91,40 +101,40 @@ export const listPYQs = async (req, res, next) => {
       return pyq;
     });
 
-    res.json(pyqsWithThumbnails);
+    if (page || limit) {
+      res.json({
+        pyqs: pyqsWithThumbnails,
+        total,
+        page: parsedPage,
+        pages: Math.ceil(total / parsedLimit),
+      });
+    } else {
+      res.json(pyqsWithThumbnails);
+    }
   } catch (error) {
     next(error);
   }
 };
 
-// @desc    Delete a PYQ (Admin only)
+// @desc    Delete a PYQ
 // @route   DELETE /api/pyq/:id
 // @access  Admin
 export const deletePYQ = async (req, res, next) => {
   try {
     const pyq = await PYQ.findById(req.params.id);
+
     if (!pyq) {
       res.status(404);
       throw new Error('PYQ not found');
     }
 
-    if (pyq.cloudinaryPublicId) {
-      try {
-        // Try image resource type first (new uploads), fallback to raw (legacy)
-        let destroyResult = await cloudinary.uploader.destroy(pyq.cloudinaryPublicId, { resource_type: 'image' });
-        if (destroyResult.result === 'not found') {
-          destroyResult = await cloudinary.uploader.destroy(pyq.cloudinaryPublicId, { resource_type: 'raw' });
-        }
-        if (destroyResult.result === 'not found' && pyq.cloudinaryPublicId.endsWith('.pdf')) {
-          await cloudinary.uploader.destroy(pyq.cloudinaryPublicId.slice(0, -4), { resource_type: 'raw' });
-        }
-      } catch (cloudErr) {
-        console.error('[Delete] Cloudinary delete error:', cloudErr.message);
-      }
-    }
+    // Soft delete
+    pyq.isDeleted = true;
+    await pyq.save();
 
-    await PYQ.findByIdAndDelete(req.params.id);
-    res.json({ message: 'PYQ deleted successfully' });
+    clearCache('/pyq');
+
+    res.json({ message: 'PYQ moved to trash successfully' });
   } catch (error) {
     next(error);
   }

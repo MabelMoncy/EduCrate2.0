@@ -12,12 +12,14 @@ import { notFound, errorHandler } from './middlewares/errorMiddleware.js';
 import { csrfMiddleware } from './middlewares/csrfMiddleware.js';
 import { requireJsonContentType } from './middlewares/contentTypeMiddleware.js';
 import { initFirebaseAdmin, isFirebaseAdminReady } from './lib/firebaseAdmin.js';
+import { initCronJobs } from './cron/cleanup.js';
 
 dotenv.config();
 
 // Connect Database
 connectDB();
 initFirebaseAdmin();
+initCronJobs();
 
 const app = express();
 

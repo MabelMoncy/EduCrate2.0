@@ -39,6 +39,11 @@ const pyqSchema = mongoose.Schema(
       required: true,
       default: 10,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    }
   },
   {
     timestamps: true,

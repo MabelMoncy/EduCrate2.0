@@ -8,6 +8,7 @@ import { createRequire } from 'node:module';
 import { uploadToCloudinary } from '../lib/cloudinaryUtils.js';
 const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse');
+import { clearCache } from '../lib/cache.js';
 
 // ── Allowlist constants (mirrors client/src/lib/semesterData.js) ──────────────
 const VALID_SEMESTERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'];
@@ -184,6 +185,8 @@ const buildResourceQuery = ({ semester, isPinned, subject, type, search } = {}) 
       { type: regex },
     ];
   }
+  
+  query.isDeleted = false;
 
   return query;
 };
@@ -202,18 +205,32 @@ const sanitise = (str) => str.replace(/[^a-zA-Z0-9\-_]/g, '_');
 // ── @access  Public metadata                                                ────
 const getResources = async (req, res, next) => {
   try {
-    const { limit } = req.query;
+    const { limit, page } = req.query;
     const query = buildResourceQuery(req.query);
 
-    let resourcesQuery = Resource.find(query).sort({ createdAt: -1 });
-    if (limit) {
-      // M14 — cap limit to prevent full-catalogue exfiltration in a single call
-      const parsed = Math.min(parseInt(limit, 10) || LIMIT_MAX, LIMIT_MAX);
-      resourcesQuery = resourcesQuery.limit(parsed);
-    }
+    const parsedLimit = Math.min(parseInt(limit, 10) || LIMIT_MAX, LIMIT_MAX);
+    const parsedPage = Math.max(parseInt(page, 10) || 1, 1);
+    const skip = (parsedPage - 1) * parsedLimit;
 
-    const resources = await resourcesQuery;
-    res.json(resources);
+    const [resources, total] = await Promise.all([
+      Resource.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parsedLimit),
+      Resource.countDocuments(query)
+    ]);
+
+    // If pagination params are explicitly passed, return paginated format, else flat array for backward compatibility
+    if (page || limit) {
+      res.json({
+        resources,
+        total,
+        page: parsedPage,
+        pages: Math.ceil(total / parsedLimit),
+      });
+    } else {
+      res.json(resources);
+    }
   } catch (error) {
     next(error);
   }
@@ -398,6 +415,9 @@ const uploadResource = async (req, res, next) => {
       uploadedBy: req.firebaseUser?.uid || req.user?._id?.toString() || 'authenticated',
     });
 
+    // Clear cache to reflect new upload
+    clearCache('/resources');
+
     res.status(201).json(resource);
   } catch (error) {
     next(error);
@@ -432,48 +452,14 @@ const deleteResource = async (req, res, next) => {
       performedBy: isAdmin ? req.user._id : req.firebaseUser.uid,
     });
 
-    // ── Delete from Cloudinary using the stored public_id ────────────────────
-    if (resource.cloudinaryPublicId) {
-      try {
-        const publicId = resource.cloudinaryPublicId;
-        console.log('[Delete] Attempting Cloudinary destroy, publicId:', publicId);
+    // Soft delete
+    resource.isDeleted = true;
+    await resource.save();
 
-        // Newer uploads use resource_type: 'image'
-        let destroyResult = await cloudinary.uploader.destroy(publicId, {
-          resource_type: 'image',
-        });
-        console.log('[Delete] Cloudinary image destroy result:', destroyResult);
+    // Clear cache to reflect deletion
+    clearCache('/resources');
 
-        // Fallback for older 'raw' uploads
-        if (destroyResult.result === 'not found') {
-          destroyResult = await cloudinary.uploader.destroy(publicId, {
-            resource_type: 'raw',
-          });
-          console.log('[Delete] Cloudinary raw destroy result:', destroyResult);
-
-          // If not found as raw, try stripping the .pdf extension (legacy records)
-          if (destroyResult.result === 'not found' && publicId.endsWith('.pdf')) {
-            const idWithoutExt = publicId.slice(0, -4);
-            console.log('[Delete] Retrying raw without .pdf extension:', idWithoutExt);
-            destroyResult = await cloudinary.uploader.destroy(idWithoutExt, {
-              resource_type: 'raw',
-            });
-            console.log('[Delete] Retry result:', destroyResult);
-          }
-        }
-
-        if (destroyResult.result !== 'ok') {
-          console.warn('[Delete] Cloudinary asset may not have been removed:', destroyResult);
-        }
-      } catch (cloudErr) {
-        console.error('[Delete] Cloudinary delete error:', cloudErr.message);
-      }
-    } else {
-      console.warn('[Delete] No cloudinaryPublicId stored for resource:', resource._id);
-    }
-
-    await Resource.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Resource deleted successfully' });
+    res.json({ message: 'Resource moved to trash successfully' });
   } catch (error) {
     next(error);
   }
