@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { ArrowRight, Loader2, FileQuestion, Plus, Check, Eye } from 'lucide-react';
+import { ArrowRight, Loader2, FileQuestion, Plus, Check, Eye, X } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import PYQViewerModal from '../components/PYQViewerModal';
+import Fuse from 'fuse.js';
 
 export default function PYQSubjects() {
   const { semId, year } = useParams();
@@ -15,6 +16,7 @@ export default function PYQSubjects() {
   const [pyqs, setPyqs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('All Subjects');
+  const [searchQuery, setSearchQuery] = useState('');
   const [previewPYQ, setPreviewPYQ] = useState(null);
 
   useEffect(() => {
@@ -24,7 +26,8 @@ export default function PYQSubjects() {
         const res = await fetch(`/api/pyq?semester=${semId}&year=${year}`);
         if (!res.ok) throw new Error('Failed to fetch PYQs');
         const data = await res.json();
-        setPyqs(data);
+        // Fallback for pagination vs array
+        setPyqs(data.pyqs || data);
       } catch (err) {
         console.error('Error fetching PYQs:', err);
       } finally {
@@ -34,9 +37,17 @@ export default function PYQSubjects() {
     fetchPYQs();
   }, [semId, year]);
 
-  const categories = ['All Subjects', ...new Set(pyqs.map(p => p.subject))].slice(0, 5); // limit tabs for UI
+  const categories = ['All Subjects', ...new Set(pyqs.map(p => p.subject))].slice(0, 5);
 
-  const filteredPYQs = filter === 'All Subjects' ? pyqs : pyqs.filter(p => p.subject === filter);
+  let filteredPYQs = filter === 'All Subjects' ? pyqs : pyqs.filter(p => p.subject === filter);
+
+  if (searchQuery.trim()) {
+    const fuse = new Fuse(filteredPYQs, {
+      keys: ['title', 'subject'],
+      threshold: 0.4,
+    });
+    filteredPYQs = fuse.search(searchQuery).map(result => result.item);
+  }
 
   const isPurchased = (pyqId) => {
     if (!studentData) return false;
@@ -73,9 +84,28 @@ export default function PYQSubjects() {
           <span className="text-white font-medium tracking-wider">{year} SERIES</span>
         </div>
         <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">University PYQs: {year}</h2>
-        <p className="text-textMuted max-w-2xl text-sm md:text-base">
+        <p className="text-textMuted max-w-2xl text-sm md:text-base mb-6">
           High-quality PDF scans of previous year question papers. Curated for the CS department with full marking schemes and verified answer keys.
         </p>
+
+        {/* Search Input */}
+        <div className="w-full max-w-md relative mb-8">
+          <input
+            type="text"
+            placeholder="Search for a subject..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-4 pr-10 py-3 rounded-xl bg-surface border border-white/10 text-white placeholder:text-textMuted focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all"
+          />
+          {searchQuery && (
+            <button 
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-textMuted hover:text-white"
+            >
+              <X size={18} />
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Categories Tab */}
