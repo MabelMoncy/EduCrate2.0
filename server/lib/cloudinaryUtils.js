@@ -13,7 +13,7 @@ export const uploadToCloudinary = (buffer, folder, publicId) =>
   new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
-        resource_type: 'raw',   // treat as raw binary — required for PDFs
+        resource_type: 'image',  // 'image' type allows PDF page thumbnail generation via pg_1
         folder,
         public_id: publicId,
         format: 'pdf',   // preserve .pdf extension in the URL
