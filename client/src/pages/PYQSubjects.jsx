@@ -115,11 +115,6 @@ export default function PYQSubjects() {
                   ) : (
                     <FileQuestion size={40} className="text-indigo-400/20 group-hover:scale-110 transition-transform duration-500" />
                   )}
-                  <div className="absolute top-3 right-3">
-                    <span className="px-2 py-1 rounded bg-black/40 backdrop-blur-md text-[10px] font-bold text-indigo-300 uppercase tracking-wider border border-indigo-500/20">
-                      PREMIUM SCAN
-                    </span>
-                  </div>
                 </div>
                 <div className="p-5 flex-1 flex flex-col">
                   <div className="flex justify-between items-start mb-2">
@@ -158,17 +153,6 @@ export default function PYQSubjects() {
                         Add to Cart
                       </button>
                     )}
-                    
-                    {/* Tiny preview button for everyone (if allowed) or just structural */}
-                    <button 
-                      onClick={() => purchased ? handleView(pyq) : null}
-                      className={`p-2 rounded-xl border transition-colors flex items-center justify-center ${
-                        purchased ? 'bg-surface border-white/10 hover:bg-white/5 text-white' : 'bg-surface/50 border-white/5 text-textMuted cursor-not-allowed'
-                      }`}
-                      title={purchased ? "View" : "Purchase to View"}
-                    >
-                      <Eye size={16} />
-                    </button>
                   </div>
                 </div>
               </div>
