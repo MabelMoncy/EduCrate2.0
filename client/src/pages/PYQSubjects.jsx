@@ -40,7 +40,10 @@ export default function PYQSubjects() {
 
   const isPurchased = (pyqId) => {
     if (!studentData) return false;
-    return studentData.purchasedPYQs?.some(p => p.pyqId === pyqId);
+    return studentData.purchasedPYQs?.some(p => {
+      const idToCheck = typeof p.pyqId === 'object' && p.pyqId !== null ? p.pyqId._id : p.pyqId;
+      return idToCheck === pyqId;
+    });
   };
 
   const isInCart = (pyqId) => {
