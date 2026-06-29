@@ -4,10 +4,8 @@ import Student from '../models/Student.js';
 import cloudinary from '../config/cloudinary.js';
 import { validatePdfMagicBytes } from '../middlewares/uploadMiddleware.js';
 import { scanBuffer } from '../lib/virusScanner.js';
-import { createRequire } from 'node:module';
 import { uploadToCloudinary } from '../lib/cloudinaryUtils.js';
-const require = createRequire(import.meta.url);
-const pdfParse = require('pdf-parse');
+import pdfParse from 'pdf-parse';
 import { clearCache } from '../lib/cache.js';
 
 // ── Allowlist constants (mirrors client/src/lib/semesterData.js) ──────────────
@@ -345,6 +343,8 @@ const uploadResource = async (req, res, next) => {
         const pdfData = await pdfParse(file.buffer, { max: 2 }); // only read first 2 pages
         const text = pdfData.text.toLowerCase();
         
+        console.log('EXTRACTED TEXT:', text);
+
         const pyqPatterns = [
           /question paper/,
           /pyq/,

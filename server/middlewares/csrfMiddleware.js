@@ -16,7 +16,8 @@
 export const csrfMiddleware = (req, res, next) => {
     const STATE_CHANGING_METHODS = ['POST', 'PATCH', 'PUT', 'DELETE'];
     // Login route has no session yet — exempt from CSRF check
-    const CSRF_EXEMPT_PATHS = ['/api/auth/login'];
+    // Webhook route must be exempt since it comes from an external service (Razorpay)
+    const CSRF_EXEMPT_PATHS = ['/api/auth/login', '/api/orders/webhook'];
     const authHeader = req.headers.authorization || '';
 
     if (!STATE_CHANGING_METHODS.includes(req.method)) {
