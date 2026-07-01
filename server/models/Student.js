@@ -20,28 +20,10 @@ const studentSchema = mongoose.Schema(
       type: String,
       default: '',
     },
-    purchasedPYQs: [
-      {
-        pyqId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'PYQ',
-          required: true,
-        },
-        orderId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'Order',
-          required: true,
-        },
-        paidAt: {
-          type: Date,
-          required: true,
-        },
-        amount: {
-          type: Number,
-          required: true,
-        },
-      },
-    ],
+    institution: {
+      type: String,
+      default: '',
+    },
     savedResources: [
       {
         type: mongoose.Schema.Types.ObjectId,

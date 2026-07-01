@@ -8,8 +8,6 @@ const navItems = [
   { to: '/admin/resources', label: 'Manage Notes', Icon: Files },
   { to: '/admin/subjects', label: 'Subject Config', Icon: Settings },
   { to: '/admin/pyqs', label: 'PYQ Management', Icon: FileQuestion },
-  { to: '/admin/payments', label: 'Payments', Icon: IndianRupee },
-  { to: '/admin/buyers', label: 'Buyers', Icon: Users },
 ];
 
 export default function AdminLayout() {
