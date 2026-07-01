@@ -1,18 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import { 
   User, LogOut, UploadCloud, Eye, Trash2, RefreshCw, 
   Loader2, CheckCircle2, Clock, AlertTriangle, 
-  FileQuestion, Bookmark, Edit3, X, BookOpen, FolderHeart, ArrowRight, Download
+  FileQuestion, Bookmark, Edit3, X, BookOpen, FolderHeart, Download
 } from 'lucide-react';
 import PYQViewerModal from '../components/PYQViewerModal';
 import PYQUploadModal from '../components/PYQUploadModal';
 import PDFPreviewModal from '../components/PDFPreviewModal';
 import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || '';
 
 export default function Account() {
   const navigate = useNavigate();
@@ -40,12 +38,7 @@ export default function Account() {
   const institution = studentData?.institution || '';
   const joinDate = studentData?.createdAt ? new Date(studentData.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'Recently';
 
-  useEffect(() => {
-    if (!firebaseUser) return;
-    fetchAllData();
-  }, [firebaseUser]);
-
-  const fetchAllData = async () => {
+  const fetchAllData = useCallback(async () => {
     try {
       setLoading(true);
       const token = await firebaseUser.getIdToken();
@@ -65,7 +58,12 @@ export default function Account() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [firebaseUser]);
+
+  useEffect(() => {
+    if (!firebaseUser) return;
+    fetchAllData();
+  }, [firebaseUser, fetchAllData]);
 
   const handleLogout = async () => {
     await logout();

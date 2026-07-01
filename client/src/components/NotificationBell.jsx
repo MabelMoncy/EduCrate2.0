@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, CheckCircle2, AlertTriangle, X } from 'lucide-react';
+import { Bell, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -119,7 +119,7 @@ export default function NotificationBell() {
                         {notif.type === 'approved' ? 'Upload Approved' : 'Action Required'}
                       </p>
                       <p className="text-xs text-textMuted mt-1 line-clamp-2">
-                        Your {notif.contentType} "{notif.contentTitle}" was {notif.type}.
+                        Your {notif.contentType} &quot;{notif.contentTitle}&quot; was {notif.type}.
                       </p>
                     </div>
                   </div>
@@ -140,7 +140,7 @@ export default function NotificationBell() {
                 </div>
                 <h3 className="text-xl font-bold text-white mb-2">Content Approved!</h3>
                 <p className="text-textMuted text-sm mb-6">
-                  Great news! Your uploaded {selectedNotification.contentType} <strong>"{selectedNotification.contentTitle}"</strong> has passed our quality check and is now live for other students to see. Thank you for your contribution!
+                  Great news! Your uploaded {selectedNotification.contentType} <strong>&quot;{selectedNotification.contentTitle}&quot;</strong> has passed our quality check and is now live for other students to see. Thank you for your contribution!
                 </p>
                 <div className="flex gap-3">
                   <button onClick={() => handlePopupAction('dismiss')} className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white font-semibold transition-colors">
@@ -158,7 +158,7 @@ export default function NotificationBell() {
                 </div>
                 <h3 className="text-xl font-bold text-white mb-2">Action Required on Submission</h3>
                 <p className="text-textMuted text-sm mb-6">
-                  ⚠️ Your recent upload <strong>"{selectedNotification.contentTitle}"</strong> could not be approved because it didn't meet our quality or clarity guidelines. Please update the file and try again.
+                  ⚠️ Your recent upload <strong>&quot;{selectedNotification.contentTitle}&quot;</strong> could not be approved because it didn&apos;t meet our quality or clarity guidelines. Please update the file and try again.
                 </p>
                 <div className="flex gap-3">
                   <button onClick={() => handlePopupAction('dismiss')} className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white font-semibold transition-colors">

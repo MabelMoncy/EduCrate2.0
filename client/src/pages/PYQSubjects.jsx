@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { ArrowRight, Loader2, FileQuestion, Plus, Check, Eye, X } from 'lucide-react';
+import { ArrowRight, Loader2, FileQuestion, Plus, Eye, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PYQViewerModal from '../components/PYQViewerModal';
+import PYQUploadModal from '../components/PYQUploadModal';
 import Fuse from 'fuse.js';
 
 export default function PYQSubjects() {

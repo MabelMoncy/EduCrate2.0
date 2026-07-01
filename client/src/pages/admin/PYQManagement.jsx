@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2, Trash2, FileQuestion, Plus, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import PYQUploadModal from '../../components/PYQUploadModal';
@@ -11,11 +11,7 @@ export default function PYQManagement() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [activeTab, setActiveTab] = useState('published');
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       const [publishedRes, pendingRes] = await Promise.all([
@@ -33,20 +29,13 @@ export default function PYQManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user.token]);
 
-  const fetchPyqs = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch('/api/pyq');
-      const data = await res.json();
-      setPyqs(data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this PYQ?')) return;

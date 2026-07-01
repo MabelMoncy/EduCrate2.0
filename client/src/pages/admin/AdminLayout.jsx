@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { BarChart3, Files, LogOut, Settings, ShieldCheck, FileQuestion, IndianRupee, Users } from 'lucide-react';
+import { BarChart3, Files, LogOut, Settings, ShieldCheck, FileQuestion } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const navItems = [

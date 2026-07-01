@@ -1,3 +1,5 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { Loader2, ServerCrash, FileText, Database, Pin, FileQuestion } from 'lucide-react';
 import { getResources } from '../../lib/api';
 import { VALID_SEMESTERS } from '../../lib/semesterData';
 import { useAuth } from '../../context/AuthContext';
