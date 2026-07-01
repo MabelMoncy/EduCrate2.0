@@ -17,6 +17,7 @@ import {
   ChevronRight,
   ChevronDown,
   Lock,
+  Trash2,
   X,
 } from 'lucide-react';
 import { getResources, getResourceFileUrl } from '../lib/api';
@@ -181,9 +182,30 @@ export default function Semester() {
     }
   };
 
+  const handleDelete = async (resource) => {
+    if (!window.confirm(`Delete "${resource.title}"? This cannot be undone.`)) return;
+    try {
+      const token = await firebaseUser.getIdToken();
+      await axios.delete(`${import.meta.env.VITE_API_URL}/resources/${resource._id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      // Remove from local notes state
+      setNotes(prev => {
+        const updated = {};
+        for (const [subject, items] of Object.entries(prev)) {
+          updated[subject] = items.filter(r => r._id !== resource._id);
+        }
+        return updated;
+      });
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete. Please try again.');
+    }
+  };
+
   /** A single resource row used in both expanded folders and the PYQ flat list */
   const ResourceRow = ({ item }) => {
     const isBookmarked = savedResourceIds.has(item._id);
+    const isOwner = isSignedIn && firebaseUser && item.uploadedBy === firebaseUser.uid;
     return (
     <div className="flex items-center gap-3 p-3 rounded-xl bg-white/3 border border-white/5 hover:border-white/10 hover:bg-white/5 transition-all group">
       <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
@@ -220,6 +242,16 @@ export default function Semester() {
         >
           <Download size={15} />
         </button>
+        {isOwner && (
+          <button
+            type="button"
+            onClick={() => handleDelete(item)}
+            className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+            title="Delete my upload"
+          >
+            <Trash2 size={15} />
+          </button>
+        )}
       </div>
     </div>
     );

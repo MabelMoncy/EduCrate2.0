@@ -22,19 +22,17 @@ const router = express.Router();
 import { updateMyProfile } from '../controllers/studentController.js';
 
 // ── Student Auth Route ─────────────────────────────────────────────────────
-router.get('/students/me', protectStudent, async (req, res, next) => {
-  try {
-    await req.student.populate('purchasedPYQs.pyqId');
-    res.json({
-      _id: req.student._id,
-      email: req.student.email,
-      displayName: req.student.displayName,
-      institution: req.student.institution,
-      purchasedPYQs: req.student.purchasedPYQs,
-    });
-  } catch (error) {
-    next(error);
-  }
+router.get('/students/me', protectStudent, (req, res) => {
+  const s = req.student;
+  res.json({
+    _id: s._id,
+    firebaseUid: s.firebaseUid,
+    email: s.email,
+    displayName: s.displayName,
+    institution: s.institution,
+    photoURL: s.photoURL,
+    createdAt: s.createdAt,
+  });
 });
 
 router.patch('/students/me', protectStudent, updateMyProfile);
