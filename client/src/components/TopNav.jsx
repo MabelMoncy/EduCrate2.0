@@ -1,8 +1,8 @@
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { LogIn, LogOut, Menu, Search, ShieldAlert, X, ShoppingCart, User } from 'lucide-react';
+import { LogIn, LogOut, Menu, Search, ShieldAlert, X, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useCart } from '../context/CartContext';
+import NotificationBell from './NotificationBell';
 
 export default function TopNav({ onMenuClick }) {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -17,8 +17,6 @@ export default function TopNav({ onMenuClick }) {
     user,
     studentData,
   } = useAuth();
-  
-  const { cartCount } = useCart();
 
   const handleSearch = (value) => {
     const nextParams = new URLSearchParams(searchParams);
@@ -73,21 +71,8 @@ export default function TopNav({ onMenuClick }) {
         </div>
       </div>
       <div className="ml-3 flex items-center gap-4">
-        {/* Cart Icon */}
-        {isSignedIn && (
-          <button 
-            type="button"
-            onClick={() => window.location.href = '/cart'}
-            className="relative p-2 rounded-xl text-textMuted hover:text-white hover:bg-white/5 transition-colors"
-          >
-            <ShoppingCart size={20} />
-            {cartCount > 0 && (
-              <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                {cartCount}
-              </span>
-            )}
-          </button>
-        )}
+        {/* Notifications */}
+        <NotificationBell />
 
         {isSignedIn && (
           <button

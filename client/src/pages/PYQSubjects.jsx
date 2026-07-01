@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { ArrowRight, Loader2, FileQuestion, Plus, Check, Eye, X } from 'lucide-react';
-import { useCart } from '../context/CartContext';
+import { ArrowRight, Loader2, FileQuestion, Plus, Eye, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import PYQViewerModal from '../components/PYQViewerModal';
+import PYQUploadModal from '../components/PYQUploadModal';
 import Fuse from 'fuse.js';
 
 export default function PYQSubjects() {
   const { semId, year } = useParams();
   const navigate = useNavigate();
-  const { cartItems, addToCart } = useCart();
-  const { studentData, isSignedIn, openSignInPrompt } = useAuth();
+  const { isSignedIn, openSignInPrompt } = useAuth();
+  const [showUploadModal, setShowUploadModal] = useState(false);
   
   const [pyqs, setPyqs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,27 +49,11 @@ export default function PYQSubjects() {
     filteredPYQs = fuse.search(searchQuery).map(result => result.item);
   }
 
-  const isPurchased = (pyqId) => {
-    if (!studentData) return false;
-    return studentData.purchasedPYQs?.some(p => {
-      const idToCheck = typeof p.pyqId === 'object' && p.pyqId !== null ? p.pyqId._id : p.pyqId;
-      return idToCheck === pyqId;
-    });
-  };
-
-  const isInCart = (pyqId) => {
-    return cartItems.some(item => item._id === pyqId);
-  };
-
-  const handleAddToCart = (pyq) => {
+  const handleView = (pyq) => {
     if (!isSignedIn) {
-      openSignInPrompt({ reason: 'purchase', afterSignIn: () => addToCart(pyq) });
+      openSignInPrompt({ reason: 'view', afterSignIn: () => setPreviewPYQ(pyq) });
       return;
     }
-    addToCart(pyq);
-  };
-
-  const handleView = (pyq) => {
     setPreviewPYQ(pyq);
   };
 
@@ -83,10 +67,21 @@ export default function PYQSubjects() {
           <ArrowRight size={12} />
           <span className="text-white font-medium tracking-wider">{year} SERIES</span>
         </div>
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">University PYQs: {year}</h2>
-        <p className="text-textMuted max-w-2xl text-sm md:text-base mb-6">
-          High-quality PDF scans of previous year question papers. Curated for the CS department with full marking schemes and verified answer keys.
-        </p>
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">University PYQs: {year}</h2>
+            <p className="text-textMuted max-w-2xl text-sm md:text-base">
+              High-quality PDF scans of previous year question papers. Curated for the CS department with full marking schemes and verified answer keys.
+            </p>
+          </div>
+          <button 
+            onClick={() => isSignedIn ? setShowUploadModal(true) : openSignInPrompt({ reason: 'upload', afterSignIn: () => setShowUploadModal(true) })}
+            className="hidden md:flex items-center gap-2 bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-indigo-500/20 shrink-0"
+          >
+            <Plus size={16} />
+            Upload PYQ
+          </button>
+        </div>
 
         {/* Search Input */}
         <div className="w-full max-w-md relative mb-8">
@@ -133,9 +128,6 @@ export default function PYQSubjects() {
       ) : filteredPYQs.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {filteredPYQs.map(pyq => {
-            const purchased = isPurchased(pyq._id);
-            const inCart = isInCart(pyq._id);
-
             return (
               <div key={pyq._id} className="rounded-2xl bg-[#1c2235] border border-white/5 overflow-hidden flex flex-col group">
                 <div className="h-40 bg-[#151a28] flex items-center justify-center relative overflow-hidden group">
@@ -154,38 +146,19 @@ export default function PYQSubjects() {
                     <h4 className="font-semibold text-white text-sm line-clamp-2 pr-2 leading-tight">
                       {pyq.title}
                     </h4>
-                    <span className="font-bold text-white whitespace-nowrap">₹{pyq.price}</span>
                   </div>
                   <p className="text-xs text-textMuted line-clamp-2 flex-1">
                     {pyq.description || `Complete set of question papers for ${pyq.subject}.`}
                   </p>
                   
                   <div className="mt-4 flex gap-2">
-                    {purchased ? (
-                      <button 
-                        onClick={() => handleView(pyq)}
-                        className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-green-500/10 text-green-400 font-semibold text-sm hover:bg-green-500/20 transition-colors border border-green-500/20"
-                      >
-                        <Eye size={16} />
-                        View Access
-                      </button>
-                    ) : inCart ? (
-                      <button 
-                        onClick={() => navigate('/cart')}
-                        className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-indigo-500/20 text-indigo-300 font-semibold text-sm transition-colors border border-indigo-500/30"
-                      >
-                        <Check size={16} />
-                        In Cart
-                      </button>
-                    ) : (
-                      <button 
-                        onClick={() => handleAddToCart(pyq)}
-                        className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-semibold text-sm transition-colors shadow-lg shadow-indigo-500/20"
-                      >
-                        <Plus size={16} />
-                        Add to Cart
-                      </button>
-                    )}
+                    <button 
+                      onClick={() => handleView(pyq)}
+                      className="flex-1 flex items-center justify-center gap-2 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-white font-semibold text-sm transition-colors shadow-lg shadow-indigo-500/20"
+                    >
+                      <Eye size={16} />
+                      View Paper
+                    </button>
                   </div>
                 </div>
               </div>
@@ -198,23 +171,14 @@ export default function PYQSubjects() {
         </div>
       )}
 
-      {/* Floating Action Button - Go to Cart */}
-      {cartItems.length > 0 && (
-        <button 
-          onClick={() => navigate('/cart')}
-          className="fixed bottom-8 right-8 w-14 h-14 rounded-full bg-cyan-400 text-slate-900 flex items-center justify-center shadow-[0_0_20px_rgba(34,211,238,0.5)] hover:scale-105 transition-transform z-40"
-        >
-          <div className="relative">
-            <ArrowRight size={24} />
-            <span className="absolute -top-3 -right-3 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-              {cartItems.length}
-            </span>
-          </div>
-        </button>
-      )}
-
       {previewPYQ && (
         <PYQViewerModal pyq={previewPYQ} onClose={() => setPreviewPYQ(null)} />
+      )}
+
+      {showUploadModal && (
+        <PYQUploadModal 
+          onClose={() => setShowUploadModal(false)}
+        />
       )}
     </Layout>
   );

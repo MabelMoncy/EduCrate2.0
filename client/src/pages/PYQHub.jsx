@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { ArrowRight, Lock } from 'lucide-react';
+import { ArrowRight, Lock, Plus } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import PYQUploadModal from '../components/PYQUploadModal';
 
 export default function PYQHub() {
   const navigate = useNavigate();
+  const { isSignedIn, openSignInPrompt } = useAuth();
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const semesters = [
     { id: 'S1', title: 'Semester 1', status: 'active' },
@@ -27,10 +31,21 @@ export default function PYQHub() {
           <ArrowRight size={14} />
           <span className="text-white font-medium">2024 Scheme</span>
         </div>
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">2024 Scheme PYQs</h2>
-        <p className="text-textMuted max-w-2xl text-sm md:text-base">
-          Access previous year question papers specifically curated for the 2024 academic scheme. Select your current semester to view available examination cycles.
-        </p>
+        <div className="flex items-start justify-between mb-3">
+          <div>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">2024 Scheme PYQs</h2>
+            <p className="text-textMuted max-w-2xl text-sm md:text-base">
+              Access previous year question papers specifically curated for the 2024 academic scheme. Select your current semester to view available examination cycles.
+            </p>
+          </div>
+          <button 
+            onClick={() => isSignedIn ? setShowUploadModal(true) : openSignInPrompt({ reason: 'upload', afterSignIn: () => setShowUploadModal(true) })}
+            className="hidden md:flex items-center gap-2 bg-indigo-500 hover:bg-indigo-400 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-indigo-500/20 shrink-0"
+          >
+            <Plus size={16} />
+            Upload PYQ
+          </button>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -84,6 +99,12 @@ export default function PYQHub() {
           );
         })}
       </div>
+
+      {showUploadModal && (
+        <PYQUploadModal 
+          onClose={() => setShowUploadModal(false)}
+        />
+      )}
     </Layout>
   );
 }

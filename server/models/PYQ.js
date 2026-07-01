@@ -34,10 +34,19 @@ const pyqSchema = mongoose.Schema(
     fileSize: {
       type: String,
     },
-    price: {
-      type: Number,
+    uploadedBy: {
+      type: String, // Firebase UID or 'admin'
       required: true,
-      default: 10,
+    },
+    uploadedByRole: {
+      type: String,
+      enum: ['admin', 'student'],
+      default: 'admin',
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'published', 'rejected'],
+      default: 'published',
     },
     isDeleted: {
       type: Boolean,

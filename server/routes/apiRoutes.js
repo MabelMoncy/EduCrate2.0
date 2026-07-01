@@ -14,10 +14,12 @@ import { protectStudent } from '../middlewares/protectStudent.js';
 import upload from '../middlewares/uploadMiddleware.js';
 import { cacheMiddleware } from '../lib/cache.js';
 
-import { uploadPYQ, listPYQs, deletePYQ, getPYQViewUrl } from '../controllers/pyqController.js';
-import { createOrder, verifyPayment, getMyOrders, getAdminPayments, getAdminBuyers, razorpayWebhook } from '../controllers/orderController.js';
+import { uploadPYQ, listPYQs, deletePYQ, getPYQViewUrl, getPendingPYQs, getMyPYQUploads, approvePYQ, rejectPYQ } from '../controllers/pyqController.js';
+import { getMyNotifications, markNotificationRead } from '../controllers/notificationController.js';
 
 const router = express.Router();
+
+import { updateMyProfile } from '../controllers/studentController.js';
 
 // ── Student Auth Route ─────────────────────────────────────────────────────
 router.get('/students/me', protectStudent, async (req, res, next) => {
@@ -27,12 +29,15 @@ router.get('/students/me', protectStudent, async (req, res, next) => {
       _id: req.student._id,
       email: req.student.email,
       displayName: req.student.displayName,
+      institution: req.student.institution,
       purchasedPYQs: req.student.purchasedPYQs,
     });
   } catch (error) {
     next(error);
   }
 });
+
+router.patch('/students/me', protectStudent, updateMyProfile);
 
 const loginLimiter = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 minutes
@@ -70,30 +75,25 @@ const pyqCache = cacheMiddleware(300);
 // ── PYQ Routes ─────────────────────────────────────────────────────────────
 router.route('/pyq')
   .get(pyqCache, listPYQs)
-  .post(uploadRateLimit, protectAdmin, upload.single('file'), uploadPYQ);
+  .post(uploadRateLimit, protectAdminOrUser, upload.single('file'), uploadPYQ);
 
-router.delete('/pyq/:id', protectAdmin, deletePYQ);
-router.get('/pyq/:id/view-url', protectStudent, getPYQViewUrl);
-router.get('/pyq/me/purchased', protectStudent, getMyPYQs); // Alias route
+router.get('/pyq/pending', protectAdmin, getPendingPYQs);
+router.patch('/pyq/:id/approve', protectAdmin, approvePYQ);
+router.patch('/pyq/:id/reject', protectAdmin, rejectPYQ);
+router.delete('/pyq/:id', protectAdminOrUser, deletePYQ);
+router.get('/pyq/:id/view-url', protectAdminOrUser, getPYQViewUrl);
 
 // ── Library Routes (Bookmarks / Uploads / PYQs) ────────────────────────────
 import { toggleBookmark, getMyBookmarks, getMyUploads } from '../controllers/resourceController.js';
-import { getMyPYQs } from '../controllers/pyqController.js';
 
 router.post('/resources/:id/bookmark', protectStudent, toggleBookmark);
 router.get('/students/me/bookmarks', protectStudent, getMyBookmarks);
 router.get('/resources/me/uploads', protectUser, getMyUploads); // Firebase user only
-router.get('/pyqs/me/purchased', protectStudent, getMyPYQs);
+router.get('/pyqs/me/uploads', protectUser, getMyPYQUploads);
 
-// ── Order Routes ───────────────────────────────────────────────────────────
-router.post('/orders/create', protectStudent, createOrder);
-router.post('/orders/verify', protectStudent, verifyPayment);
-router.post('/orders/webhook', razorpayWebhook);
-router.get('/orders/my', protectStudent, getMyOrders);
-
-// ── Admin Payments/Buyers Routes ───────────────────────────────────────────
-router.get('/admin/payments', protectAdmin, getAdminPayments);
-router.get('/admin/buyers', protectAdmin, getAdminBuyers);
+// ── Notification Routes ────────────────────────────────────────────────────
+router.get('/students/me/notifications', protectUser, getMyNotifications);
+router.patch('/students/me/notifications/:id/read', protectUser, markNotificationRead);
 
 // Health check — standard uptime/readiness probe
 router.get('/health', (req, res) => {

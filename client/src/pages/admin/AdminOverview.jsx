@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Database, FileText, Loader2, Pin, ServerCrash, FileQuestion, IndianRupee, Users } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Loader2, ServerCrash, FileText, Database, Pin, FileQuestion } from 'lucide-react';
 import { getResources } from '../../lib/api';
 import { VALID_SEMESTERS } from '../../lib/semesterData';
 import { useAuth } from '../../context/AuthContext';
@@ -13,8 +13,6 @@ export default function AdminOverview() {
   const { user } = useAuth();
   const [resources, setResources] = useState([]);
   const [pyqCount, setPyqCount] = useState(0);
-  const [revenue, setRevenue] = useState(0);
-  const [buyersCount, setBuyersCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -32,16 +30,6 @@ export default function AdminOverview() {
         const pyqRes = await fetch('/api/pyq');
         const pyqs = await pyqRes.json();
         setPyqCount(pyqs.length || 0);
-
-        // Fetch Payments
-        const payRes = await fetch('/api/admin/payments', { headers: { Authorization: `Bearer ${user.token}` }});
-        const payData = await payRes.json();
-        setRevenue(payData.totalRevenue || 0);
-
-        // Fetch Buyers
-        const buyerRes = await fetch('/api/admin/buyers', { headers: { Authorization: `Bearer ${user.token}` }});
-        const buyerData = await buyerRes.json();
-        setBuyersCount(buyerData.totalBuyers || 0);
 
       } catch (err) {
         setError(err.message || 'Failed to load admin overview.');
@@ -116,22 +104,10 @@ export default function AdminOverview() {
 
       <section className="grid gap-4 md:grid-cols-3 mt-4">
         <StatCard
-          label="Total PYQs Uploaded"
+          label="Total Published PYQs"
           value={pyqCount}
-          helper="Premium question papers"
+          helper="Total live question papers"
           Icon={FileQuestion}
-        />
-        <StatCard
-          label="Total Revenue"
-          value={`₹${revenue}`}
-          helper="From PYQ sales"
-          Icon={IndianRupee}
-        />
-        <StatCard
-          label="Total Buyers"
-          value={buyersCount}
-          helper="Unique purchasing students"
-          Icon={Users}
         />
       </section>
 

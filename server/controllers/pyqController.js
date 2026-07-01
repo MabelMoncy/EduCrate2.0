@@ -1,5 +1,5 @@
 import PYQ from '../models/PYQ.js';
-import Student from '../models/Student.js';
+import Notification from '../models/Notification.js';
 import cloudinary from '../config/cloudinary.js';
 import { validatePdfMagicBytes } from '../middlewares/uploadMiddleware.js';
 import { uploadToCloudinary } from '../lib/cloudinaryUtils.js';
@@ -11,12 +11,12 @@ const sanitise = (str) => str.replace(/[^a-zA-Z0-9\-_]/g, '_');
 
 
 
-// @desc    Upload a new PYQ (Admin only)
+// @desc    Upload a new PYQ (Admin or Student)
 // @route   POST /api/pyq
-// @access  Admin
+// @access  Admin or Student
 export const uploadPYQ = async (req, res, next) => {
   try {
-    const { title, description, semester, subject, year, price } = req.body;
+    const { title, description, semester, subject, year } = req.body;
     const file = req.file;
 
     if (!file) {
@@ -49,6 +49,11 @@ export const uploadPYQ = async (req, res, next) => {
 
     const uploadResult = await uploadToCloudinary(file.buffer, folder, publicId);
 
+    const isAdmin = req.admin ? true : false;
+    const uid = isAdmin ? 'admin' : req.firebaseUser.uid;
+    const role = isAdmin ? 'admin' : 'student';
+    const status = isAdmin ? 'published' : 'pending';
+
     const pyq = await PYQ.create({
       title: title.trim().substring(0, 200),
       description: description ? description.trim().substring(0, 1000) : '',
@@ -58,10 +63,14 @@ export const uploadPYQ = async (req, res, next) => {
       cloudinaryPublicId: uploadResult.public_id,
       fileUrl: uploadResult.secure_url,
       fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
-      price: price ? parseFloat(price) : 10,
+      uploadedBy: uid,
+      uploadedByRole: role,
+      status,
     });
 
-    clearCache('/pyq');
+    if (isAdmin) {
+      clearCache('/pyq');
+    }
 
     res.status(201).json(pyq);
   } catch (error) {
@@ -77,7 +86,7 @@ export const listPYQs = async (req, res, next) => {
     // Fix: destructure ALL needed params including limit and page
     const { semester, year, subject, limit, page } = req.query;
     
-    const query = { isDeleted: false }; // Always exclude soft-deleted PYQs
+    const query = { isDeleted: false, status: 'published' }; // Only published PYQs
     if (semester) query.semester = semester;
     if (year) query.year = parseInt(year, 10);
     if (subject) query.subject = subject;
@@ -120,7 +129,7 @@ export const listPYQs = async (req, res, next) => {
 
 // @desc    Delete a PYQ
 // @route   DELETE /api/pyq/:id
-// @access  Admin
+// @access  Admin or User (Creator only)
 export const deletePYQ = async (req, res, next) => {
   try {
     const pyq = await PYQ.findById(req.params.id);
@@ -128,6 +137,14 @@ export const deletePYQ = async (req, res, next) => {
     if (!pyq || pyq.isDeleted) {
       res.status(404);
       throw new Error('PYQ not found');
+    }
+
+    // Auth check: Admin can delete any, user can only delete their own
+    if (!req.admin) {
+      if (pyq.uploadedBy !== req.firebaseUser.uid) {
+        res.status(403);
+        throw new Error('Not authorized to delete this PYQ');
+      }
     }
 
     // Soft delete: mark as deleted so it disappears from the frontend immediately.
@@ -146,23 +163,12 @@ export const deletePYQ = async (req, res, next) => {
 
 // @desc    Get a signed Cloudinary URL for a PYQ (No download)
 // @route   GET /api/pyq/:id/view-url
-// @access  Student (Must have purchased)
+// @access  Authenticated User
 export const getPYQViewUrl = async (req, res, next) => {
   try {
     const pyqId = req.params.id;
-    const studentId = req.student._id;
 
-    const student = await Student.findById(studentId);
-    if (!student) {
-      res.status(401);
-      throw new Error('Student record not found');
-    }
-
-    const hasPurchased = student.purchasedPYQs.some(p => p.pyqId.toString() === pyqId);
-    if (!hasPurchased) {
-      res.status(403);
-      throw new Error('You must purchase this PYQ to view it.');
-    }
+    // We no longer check purchase status, but require authentication (handled by middleware)
 
     const pyq = await PYQ.findById(pyqId);
     if (!pyq || !pyq.cloudinaryPublicId) {
@@ -188,23 +194,90 @@ export const getPYQViewUrl = async (req, res, next) => {
   }
 };
 
-// @desc    Get My Purchased PYQs
-// @route   GET /api/pyq/my
-// @access  Student
-export const getMyPYQs = async (req, res, next) => {
+// @desc    Get My Uploaded PYQs
+// @route   GET /api/pyqs/me/uploads
+// @access  User (Student)
+export const getMyPYQUploads = async (req, res, next) => {
   try {
-    const student = await Student.findOne({ firebaseUid: req.student.firebaseUid }).populate('purchasedPYQs.pyqId');
-    if (!student) {
+    const pyqs = await PYQ.find({
+      uploadedBy: req.firebaseUser.uid,
+      isDeleted: false,
+    }).sort({ createdAt: -1 });
+
+    res.json(pyqs);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get Pending PYQs
+// @route   GET /api/pyq/pending
+// @access  Admin
+export const getPendingPYQs = async (req, res, next) => {
+  try {
+    const pyqs = await PYQ.find({ status: 'pending', isDeleted: false }).sort({ createdAt: -1 });
+    res.json(pyqs);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Approve a Pending PYQ
+// @route   PATCH /api/pyq/:id/approve
+// @access  Admin
+export const approvePYQ = async (req, res, next) => {
+  try {
+    const pyq = await PYQ.findById(req.params.id);
+    if (!pyq) {
       res.status(404);
-      throw new Error('Student not found');
+      throw new Error('PYQ not found');
     }
     
-    // Extract just the populated PYQ objects
-    const myPyqs = student.purchasedPYQs
-      .map(item => item.pyqId)
-      .filter(pyq => pyq != null); // filter out if a PYQ was deleted from DB
+    pyq.status = 'published';
+    await pyq.save();
 
-    res.json(myPyqs);
+    if (pyq.uploadedByRole === 'student') {
+      await Notification.create({
+        studentFirebaseUid: pyq.uploadedBy,
+        type: 'approved',
+        contentType: 'pyq',
+        contentId: pyq._id,
+        contentTitle: pyq.title,
+      });
+    }
+
+    clearCache('/pyq');
+    res.json({ message: 'PYQ approved successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Reject a Pending PYQ
+// @route   PATCH /api/pyq/:id/reject
+// @access  Admin
+export const rejectPYQ = async (req, res, next) => {
+  try {
+    const pyq = await PYQ.findById(req.params.id);
+    if (!pyq) {
+      res.status(404);
+      throw new Error('PYQ not found');
+    }
+    
+    pyq.status = 'rejected';
+    await pyq.save();
+
+    if (pyq.uploadedByRole === 'student') {
+      await Notification.create({
+        studentFirebaseUid: pyq.uploadedBy,
+        type: 'rejected',
+        contentType: 'pyq',
+        contentId: pyq._id,
+        contentTitle: pyq.title,
+      });
+    }
+
+    res.json({ message: 'PYQ rejected successfully' });
   } catch (error) {
     next(error);
   }
