@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { tokenBlacklist } from '../lib/tokenBlacklist.js';
+import { isLockedOut, recordFailedAttempt, clearFailedAttempts } from '../lib/loginAttempts.js';
 
 const signToken = (userId, role) => {
   const secret = process.env.JWT_SECRET;
@@ -32,22 +33,36 @@ const loginAdmin = async (req, res, next) => {
       throw new Error('Email and password are required');
     }
 
+    // Progressive lockout check — blocks brute-force after 10 consecutive failures
+    const clientIp = req.ip || req.socket?.remoteAddress || 'unknown';
+    const lockStatus = await isLockedOut(clientIp);
+    if (lockStatus.locked) {
+      res.status(429);
+      throw new Error(`Too many failed login attempts. Please try again in ${lockStatus.remainingMinutes} minutes.`);
+    }
+
     const user = await User.findOne({ email });
     if (!user) {
+      await recordFailedAttempt(clientIp);
       res.status(401);
       throw new Error('Invalid credentials');
     }
 
     if (user.role !== 'admin') {
+      await recordFailedAttempt(clientIp);
       res.status(401);
       throw new Error('Invalid credentials');
     }
 
     const passwordMatches = await bcrypt.compare(password, user.password);
     if (!passwordMatches) {
+      await recordFailedAttempt(clientIp);
       res.status(401);
       throw new Error('Invalid credentials');
     }
+
+    // Successful login — clear any previous failed attempts
+    await clearFailedAttempts(clientIp);
 
     const { token } = signToken(user._id, user.role);
     const csrfToken = crypto.randomUUID();

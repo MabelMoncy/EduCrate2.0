@@ -25,10 +25,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Setup Node 22
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
@@ -40,6 +40,9 @@ jobs:
       - name: Security audit
         # Fail the build if any HIGH or CRITICAL CVE is found in server deps
         run: npm audit --audit-level=high
+
+      - name: Lint (ESLint + Security Plugin)
+        run: npm run lint
 
       - name: Run tests
         run: npm test
@@ -54,10 +57,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Setup Node 20
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm

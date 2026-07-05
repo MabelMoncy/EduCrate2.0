@@ -44,6 +44,12 @@ app.use(helmet({
       upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
     },
   },
+  // Explicit HSTS — eligible for browser preload list
+  strictTransportSecurity: {
+    maxAge: 63072000,        // 2 years
+    includeSubDomains: true,
+    preload: true,
+  },
   crossOriginResourcePolicy: { policy: 'same-site' },
 }));
 app.use(cookieParser());
@@ -154,7 +160,7 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   const env = process.env.NODE_ENV || 'development';
   const isProd = env === 'production';
 
@@ -182,3 +188,8 @@ app.listen(PORT, () => {
     }));
   }
 });
+
+// Slowloris / connection exhaustion protection
+server.headersTimeout = 20000;  // 20s to receive full headers
+server.requestTimeout = 30000;  // 30s total request timeout
+server.keepAliveTimeout = 65000; // Slightly above typical ALB/proxy 60s idle timeout

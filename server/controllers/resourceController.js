@@ -220,16 +220,25 @@ const getResources = async (req, res, next) => {
       Resource.countDocuments(query)
     ]);
 
+    // Strip internal Cloudinary fields from public metadata responses.
+    // Authenticated file access goes through /resources/:id/file-url which generates signed URLs.
+    const sanitizedResources = resources.map(doc => {
+      const obj = doc.toObject();
+      delete obj.fileUrl;
+      delete obj.cloudinaryPublicId;
+      return obj;
+    });
+
     // If pagination params are explicitly passed, return paginated format, else flat array for backward compatibility
     if (page || limit) {
       res.json({
-        resources,
+        resources: sanitizedResources,
         total,
         page: parsedPage,
         pages: Math.ceil(total / parsedLimit),
       });
     } else {
-      res.json(resources);
+      res.json(sanitizedResources);
     }
   } catch (error) {
     next(error);

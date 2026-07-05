@@ -12,11 +12,17 @@ updates:
     labels:
       - "dependencies"
       - "client"
+    commit-message:
+      prefix: "deps(client):"
     # Group all non-major updates into a single PR to reduce noise
     groups:
       client-minor-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+      # Security updates get their own fast-tracked PR
+      client-security:
+        applies-to: security-updates
+        patterns: ["*"]
     ignore:
       # @types/* major bumps routinely break peer deps — review manually
       - dependency-name: "@types/react"
@@ -48,10 +54,16 @@ updates:
     labels:
       - "dependencies"
       - "server"
+    commit-message:
+      prefix: "deps(server):"
     groups:
       server-minor-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+      # Security updates get their own fast-tracked PR
+      server-security:
+        applies-to: security-updates
+        patterns: ["*"]
     ignore:
       # Express v5 → v6 will be a significant migration — review manually
       - dependency-name: "express"
@@ -72,6 +84,8 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
+    commit-message:
+      prefix: "ci:"
     groups:
       actions-all:
         patterns: ["*"]
