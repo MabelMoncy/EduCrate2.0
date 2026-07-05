@@ -1,0 +1,28 @@
+name: Dependency Review
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  dependency-review:
+    name: Dependency Review — Block vulnerable PRs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          # Block PRs that introduce HIGH or CRITICAL vulnerabilities
+          fail-on-severity: high
+          # Block restrictive licenses that conflict with the project
+          deny-licenses: GPL-3.0, AGPL-3.0
+          # Comment on the PR with a summary of findings
+          comment-summary-in-pr: always

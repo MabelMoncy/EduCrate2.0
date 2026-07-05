@@ -95,13 +95,17 @@ router.patch('/students/me/notifications/:id/read', protectUser, markNotificatio
 
 // Health check — standard uptime/readiness probe
 router.get('/health', (req, res) => {
+  const isProd = process.env.NODE_ENV === 'production';
   res.json({
     status: 'ok',
     message: 'EduCrate API is running',
     timestamp: new Date().toISOString(),
     uptime: Math.floor(process.uptime()),
-    env: process.env.NODE_ENV || 'development',
-    version: process.env.npm_package_version || '1.0.0',
+    // Don't expose version or env in production — useful recon for attackers
+    ...(isProd ? {} : {
+      env: process.env.NODE_ENV || 'development',
+      version: process.env.npm_package_version || '1.0.0',
+    }),
   });
 });
 

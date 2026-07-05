@@ -2,6 +2,7 @@ import PYQ from '../models/PYQ.js';
 import Notification from '../models/Notification.js';
 import cloudinary from '../config/cloudinary.js';
 import { validatePdfMagicBytes } from '../middlewares/uploadMiddleware.js';
+import { scanBuffer } from '../lib/virusScanner.js';
 import { uploadToCloudinary } from '../lib/cloudinaryUtils.js';
 import { clearCache } from '../lib/cache.js';
 
@@ -42,6 +43,14 @@ export const uploadPYQ = async (req, res, next) => {
       throw new Error('File size must not exceed 10 MB');
     }
 
+    // Malware scan — same ClamAV check that uploadResource performs
+    try {
+      await scanBuffer(file.buffer);
+    } catch (scanErr) {
+      res.status(400);
+      throw new Error(scanErr.message);
+    }
+
     const safeSubject = sanitise(subject);
     const safeName = sanitise(file.originalname.replace(/\.pdf$/i, '')).substring(0, 100);
     const folder = `educrate/pyq/${semester}/${year}/${safeSubject}`;
@@ -49,7 +58,7 @@ export const uploadPYQ = async (req, res, next) => {
 
     const uploadResult = await uploadToCloudinary(file.buffer, folder, publicId);
 
-    const isAdmin = req.admin ? true : false;
+    const isAdmin = !!req.user;
     const uid = isAdmin ? 'admin' : req.firebaseUser.uid;
     const role = isAdmin ? 'admin' : 'student';
     const status = isAdmin ? 'published' : 'pending';
@@ -140,7 +149,7 @@ export const deletePYQ = async (req, res, next) => {
     }
 
     // Auth check: Admin can delete any, user can only delete their own
-    if (!req.admin) {
+    if (!req.user) {
       if (pyq.uploadedBy !== req.firebaseUser.uid) {
         res.status(403);
         throw new Error('Not authorized to delete this PYQ');
