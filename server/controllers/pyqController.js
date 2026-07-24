@@ -94,7 +94,6 @@ export const listPYQs = async (req, res, next) => {
   try {
     // Fix: destructure ALL needed params including limit and page
     const { semester, year, subject, limit, page } = req.query;
-    
     const query = { isDeleted: false, status: 'published' }; // Only published PYQs
     if (semester) query.semester = { $eq: semester };
     if (year) query.year = { $eq: parseInt(year, 10) };
@@ -241,7 +240,7 @@ export const approvePYQ = async (req, res, next) => {
       res.status(404);
       throw new Error('PYQ not found');
     }
-    
+
     pyq.status = 'published';
     await pyq.save();
 
@@ -272,7 +271,7 @@ export const rejectPYQ = async (req, res, next) => {
       res.status(404);
       throw new Error('PYQ not found');
     }
-    
+
     pyq.status = 'rejected';
     await pyq.save();
 
