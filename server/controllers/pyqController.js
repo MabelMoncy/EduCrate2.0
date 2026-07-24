@@ -95,7 +95,7 @@ export const listPYQs = async (req, res, next) => {
     // Fix: destructure ALL needed params including limit and page
     const { semester, year, subject, limit, page } = req.query;
     const query = { isDeleted: false, status: 'published' }; // Only published PYQs
-    if (semester) query.semester = { $eq: semester };
+    if (semester && VALID_SEMESTERS.includes(semester)) query.semester = { $eq: semester };
     const parsedYear = parseInt(year, 10);
     if (year && !isNaN(parsedYear)) query.year = { $eq: parsedYear };
     if (subject) query.subject = { $eq: subject };
