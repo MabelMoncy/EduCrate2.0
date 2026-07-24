@@ -161,8 +161,20 @@ const LIMIT_MAX = 100;         // M14 — prevent full-table dumps via ?limit=10
 /**
  * Strips all HTML tags from a string to prevent stored XSS payloads (M16).
  * React escapes by default, but sanitising at rest is defence-in-depth.
+ * Uses iterative sanitization to handle nested or malformed tags (CodeQL fix).
  */
-const stripHtml = (str) => str.replace(/<[^>]*>/g, '');
+const stripHtml = (str) => {
+  if (typeof str !== 'string') return '';
+  let sanitized = str.substring(0, 2000);
+  let prev;
+  let passes = 0;
+  do {
+    prev = sanitized;
+    sanitized = sanitized.replace(/<[^><]*>/g, '');
+    passes++;
+  } while (sanitized !== prev && passes < 10);
+  return sanitized;
+};
 
 const buildResourceQuery = ({ semester, isPinned, subject, type, search } = {}) => {
   const query = {};
@@ -186,7 +198,7 @@ const buildResourceQuery = ({ semester, isPinned, subject, type, search } = {}) 
       { type: regex },
     ];
   }
-  
+
   query.isDeleted = false;
 
   return query;
@@ -265,7 +277,7 @@ const getResourceFileUrl = async (req, res, next) => {
 
     const attachment = req.query.attachment === 'true';
     const expiresAt = Math.floor(Date.now() / 1000) + (10 * 60);
-    
+
     // Legacy notes were uploaded as 'raw', newer ones as 'image'
     const rType = resource.fileUrl && resource.fileUrl.includes('/image/upload/') ? 'image' : 'raw';
 
@@ -354,7 +366,7 @@ const uploadResource = async (req, res, next) => {
       try {
         const pdfData = await pdfParse(file.buffer, { max: 2 }); // only read first 2 pages
         const text = pdfData.text.toLowerCase();
-        
+
         const pyqPatterns = [
           /question paper/,
           /pyq/,
@@ -365,9 +377,9 @@ const uploadResource = async (req, res, next) => {
           /end semester examination/,
           /b\.tech degree examination/
         ];
-        
+
         const isLikelyPYQ = pyqPatterns.some(pattern => pattern.test(text));
-        
+
         if (isLikelyPYQ) {
           res.status(400);
           throw new Error('Question papers cannot be uploaded as notes. Please upload only study notes.');
@@ -448,10 +460,10 @@ const deleteResource = async (req, res, next) => {
 
     const isAdmin = !!req.user;
     const isOwner = req.firebaseUser && resource.uploadedBy === req.firebaseUser.uid;
-    
+
     if (!isAdmin && !isOwner) {
-       res.status(403);
-       throw new Error('Not authorized to delete this resource');
+      res.status(403);
+      throw new Error('Not authorized to delete this resource');
     }
 
     // ── Audit log — record deletion before it executes (H5) ─────────────────────
@@ -516,28 +528,28 @@ const toggleBookmark = async (req, res, next) => {
       res.status(404);
       throw new Error('Resource not found');
     }
-    
+
     const student = await Student.findOne({ firebaseUid: req.student.firebaseUid });
     if (!student) {
       res.status(404);
       throw new Error('Student not found');
     }
-    
+
     if (!Array.isArray(student.savedResources)) {
       student.savedResources = [];
     }
-    
+
     const isBookmarked = student.savedResources.some(id => id.toString() === resource._id.toString());
-    
+
     if (isBookmarked) {
       student.savedResources = student.savedResources.filter(id => id.toString() !== resource._id.toString());
     } else {
       student.savedResources.push(resource._id);
     }
-    
+
     await student.save();
     res.json({ isBookmarked: !isBookmarked });
-  } catch(error) {
+  } catch (error) {
     next(error);
   }
 };
