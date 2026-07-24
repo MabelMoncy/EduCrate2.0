@@ -22,7 +22,7 @@ jobs:
         with:
           # Block PRs that introduce HIGH or CRITICAL vulnerabilities
           fail-on-severity: high
-          # Block restrictive licenses that conflict with the project
-          deny-licenses: GPL-3.0, AGPL-3.0
+          # Allow standard permissive open-source licenses
+          allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, CC0-1.0
           # Comment on the PR with a summary of findings
           comment-summary-in-pr: always
