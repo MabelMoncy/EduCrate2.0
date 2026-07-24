@@ -20,10 +20,10 @@ const errorHandler = (err, req, res, next) => {
   const is5xx = statusCode >= 500;
 
   // Always log 5xx errors server-side so they appear in server logs
+  // Always log 5xx errors server-side so they appear in server logs
   if (is5xx) {
-    console.error(`[error] ${req.method} ${req.originalUrl} →`, err.message, err.stack);
+    console.error('[error] %s %s - %s\n%s', req.method, req.originalUrl, err.message, err.stack);
   }
-
   const body = {};
   if (is5xx && isProd) {
     // In production, never expose internal details for server errors
