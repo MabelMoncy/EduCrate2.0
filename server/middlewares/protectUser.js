@@ -4,9 +4,13 @@ import { admin, isFirebaseAdminReady } from '../lib/firebaseAdmin.js';
 import { tokenBlacklist } from '../lib/tokenBlacklist.js';
 
 const getBearerToken = (req) => {
-    const authHeader = req.headers.authorization || '';
-    const match = authHeader.match(/^Bearer\s+(.+)$/i);
-    return match?.[1]?.trim() || '';
+    const authHeader = req.headers.authorization;
+    if (typeof authHeader !== 'string') return '';
+    const trimmed = authHeader.trim();
+    if (trimmed.toLowerCase().startsWith('bearer ')) {
+        return trimmed.substring(7).trim();
+    }
+    return '';
 };
 
 const requireVerifiedEmail = () => process.env.FIREBASE_REQUIRE_VERIFIED_EMAIL !== 'false';
@@ -99,28 +103,14 @@ export const protectUser = async (req, res, next) => {
  */
 export const protectAdminOrUser = async (req, res, next) => {
     try {
-        let authFound = false;
-        
         const adminUser = await verifyAdminCookie(req);
         if (adminUser) {
             req.user = adminUser;
-            authFound = true;
-        }
-
-        if (getBearerToken(req)) {
-            try {
-                req.firebaseUser = await verifyFirebaseUser(req);
-                authFound = true;
-            } catch (err) {
-                if (!authFound) throw err;
-            }
-        }
-        
-        if (authFound) {
             return next();
         }
 
-        throw new Error('Authentication required. Please sign in to continue.');
+        req.firebaseUser = await verifyFirebaseUser(req);
+        return next();
     } catch (err) {
         if (res.statusCode === 200) res.status(err.statusCode || 401);
         return next(
