@@ -9,7 +9,7 @@ const isLocalAddress = (address = '') => {
   return value === '127.0.0.1' || value === '::1' || value === '::ffff:127.0.0.1';
 };
 
-const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, req, res, _next) => {
   const isCorsError = err?.message === 'Not allowed by CORS';
   const statusCode =
     res.statusCode === 200 ? (isCorsError ? 403 : 500) : res.statusCode;
