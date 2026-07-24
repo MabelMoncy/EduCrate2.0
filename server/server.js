@@ -88,12 +88,8 @@ app.use(
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Prevent NoSQL injection — sanitize body and params only.
-app.use((req, _res, next) => {
-  if (req.body) mongoSanitize.sanitize(req.body, { allowDots: false });
-  if (req.params) mongoSanitize.sanitize(req.params, { allowDots: false });
-  next();
-});
+// Prevent NoSQL injection
+app.use(mongoSanitize());
 
 // L32 — reject non-JSON Content-Type on state-changing endpoints (multipart uploads are exempt)
 app.use('/api', requireJsonContentType);
