@@ -143,12 +143,13 @@ if (process.env.NODE_ENV === 'production') {
     max: 1000,
     standardHeaders: true,
     legacyHeaders: false,
-    message: 'Too many requests, please try again later.',
+    message: { message: 'Too many requests, please try again later.' },
   });
 
+  app.use(spaLimiter);
   app.use(express.static(clientBuild));
 
-  app.get('*', spaLimiter, (req, res) => {
+  app.get('*', (req, res) => {
     res.sendFile(path.join(clientBuild, 'index.html'));
   });
 }
