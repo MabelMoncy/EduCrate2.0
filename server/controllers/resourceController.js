@@ -176,6 +176,7 @@ const buildResourceQuery = ({ semester, isPinned, subject, type, search } = {}) 
     // M13 — enforce length cap before constructing any RegExp object
     const raw = search.trim().substring(0, SEARCH_MAX_LENGTH);
     const term = escapeRegex(raw);
+    // eslint-disable-next-line security/detect-non-literal-regexp
     const regex = new RegExp(term, 'i');
     query.$or = [
       { title: regex },
