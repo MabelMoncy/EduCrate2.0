@@ -109,14 +109,8 @@ export const protectAdminOrUser = async (req, res, next) => {
             return next();
         }
 
-        const idToken = getBearerToken(req);
-        if (idToken) {
-            req.firebaseUser = await verifyFirebaseUser(req);
-            return next();
-        }
-
-        res.status(401);
-        throw new Error('Authentication required. Please sign in to continue.');
+        req.firebaseUser = await verifyFirebaseUser(req);
+        return next();
     } catch (err) {
         if (res.statusCode === 200) res.status(err.statusCode || 401);
         return next(
