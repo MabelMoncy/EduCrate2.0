@@ -161,8 +161,16 @@ const LIMIT_MAX = 100;         // M14 — prevent full-table dumps via ?limit=10
 /**
  * Strips all HTML tags from a string to prevent stored XSS payloads (M16).
  * React escapes by default, but sanitising at rest is defence-in-depth.
+ * Uses iterative sanitization to handle nested or malformed tags (CodeQL fix).
  */
-const stripHtml = (str) => str.replace(/<[^>]*>/g, '');
+const stripHtml = (str) => {
+  let prev;
+  do {
+    prev = str;
+    str = str.replace(/<[^>]*>/g, '');
+  } while (str !== prev);
+  return str;
+};
 
 const buildResourceQuery = ({ semester, isPinned, subject, type, search } = {}) => {
   const query = {};
