@@ -96,7 +96,8 @@ export const listPYQs = async (req, res, next) => {
     const { semester, year, subject, limit, page } = req.query;
     const query = { isDeleted: false, status: 'published' }; // Only published PYQs
     if (semester) query.semester = { $eq: semester };
-    if (year) query.year = { $eq: parseInt(year, 10) };
+    const parsedYear = parseInt(year, 10);
+    if (year && !isNaN(parsedYear)) query.year = { $eq: parsedYear };
     if (subject) query.subject = { $eq: subject };
 
     const parsedLimit = Math.min(parseInt(limit, 10) || 100, 100);
