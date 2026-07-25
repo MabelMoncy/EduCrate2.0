@@ -23,6 +23,6 @@ jobs:
           # Block PRs that introduce HIGH or CRITICAL vulnerabilities
           fail-on-severity: high
           # Allow standard permissive open-source licenses
-          allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, CC0-1.0
+          allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, CC0-1.0, CC-BY-4.0, BlueOak-1.0.0
           # Comment on the PR with a summary of findings
           comment-summary-in-pr: always
