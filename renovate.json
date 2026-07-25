@@ -13,8 +13,7 @@
         "digest"
       ],
       "automerge": true,
-      "automergeType": "pr",
-      "platformAutomerge": true
+      "automergeType": "pr"
     },
     {
       "description": "DO NOT automerge Major Updates - Require PR & Manual Approval",
