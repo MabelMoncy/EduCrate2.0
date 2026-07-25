@@ -2,5 +2,57 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
+  ],
+  "packageRules": [
+    {
+      "description": "Automatically merge safe Patch and Minor updates for non-core packages if CI passes",
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ],
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    {
+      "description": "DO NOT automerge Major Updates - Require PR & Manual Approval",
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "automerge": false,
+      "labels": [
+        "major-update",
+        "needs-manual-review"
+      ]
+    },
+    {
+      "description": "Stop at PR for core framework & security packages across ALL update types (major, minor, patch)",
+      "matchPackageNames": [
+        "express",
+        "mongoose",
+        "react",
+        "react-dom",
+        "firebase",
+        "firebase-admin",
+        "helmet",
+        "vite"
+      ],
+      "matchUpdateTypes": [
+        "major",
+        "minor",
+        "patch"
+      ],
+      "automerge": false,
+      "labels": [
+        "core-framework-update",
+        "manual-approval-required"
+      ]
+    }
+  ],
+  "schedule": [
+    "before 4am on Monday"
+  ]
+}
   ]
 }

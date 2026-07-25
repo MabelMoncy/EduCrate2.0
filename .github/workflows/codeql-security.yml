@@ -1,13 +1,12 @@
-name: CodeQL Security Analysis
+name: "CodeQL Security & Quality Analysis"
 
 on:
   push:
-    branches: [main]
+    branches: [ main, dev ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
   schedule:
-    # Run weekly on Monday at 06:00 UTC — catches new vulnerability patterns
-    - cron: '0 6 * * 1'
+    - cron: '0 6 * * 1' # Weekly automatic scan every Monday at 06:00 UTC
 
 permissions:
   actions: read
@@ -27,13 +26,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
-          # security-and-quality catches more issues than default security-only
           queries: security-and-quality
 
       - name: Autobuild
