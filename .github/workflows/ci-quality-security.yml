@@ -43,10 +43,10 @@ jobs:
         run: npm audit --audit-level=high
 
       - name: Lint Code
-        run: npm run lint --if-present
+        run: npm run lint
 
       - name: Run Server Tests
-        run: npm test --if-present
+        run: npm test
 
   # ── Client Job ──────────────────────────────────────────────────────────────
   client:
@@ -74,10 +74,10 @@ jobs:
         run: npm audit --audit-level=high --omit=optional || true
 
       - name: Lint Code
-        run: npm run lint --if-present
+        run: npm run lint
 
       - name: Run Client Tests
-        run: npm test --if-present
+        run: npm test
 
       - name: Build React/Vite Client
         run: npm run build
