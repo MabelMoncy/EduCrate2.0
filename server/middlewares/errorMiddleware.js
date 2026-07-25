@@ -1,5 +1,11 @@
+const sanitizeLogInput = (input) => {
+  if (input == null) return '';
+  return String(input).replace(/[\r\n]/g, '');
+};
+
 const notFound = (req, res, next) => {
-  const error = new Error(`Not Found - ${req.originalUrl}`);
+  const cleanUrl = sanitizeLogInput(req.originalUrl);
+  const error = new Error(`Not Found - ${cleanUrl}`);
   res.status(404);
   next(error);
 };
@@ -20,9 +26,11 @@ const errorHandler = (err, req, res, _next) => {
   const is5xx = statusCode >= 500;
 
   // Always log 5xx errors server-side so they appear in server logs
-  // Always log 5xx errors server-side so they appear in server logs
   if (is5xx) {
-    console.error('[error] %s %s - %s\n%s', req.method, req.originalUrl, err.message, err.stack);
+    const cleanMethod = sanitizeLogInput(req.method);
+    const cleanUrl = sanitizeLogInput(req.originalUrl);
+    const cleanMessage = sanitizeLogInput(err?.message);
+    console.error('[error] %s %s - %s\n%s', cleanMethod, cleanUrl, cleanMessage, err.stack);
   }
   const body = {};
   if (is5xx && isProd) {
@@ -40,4 +48,4 @@ const errorHandler = (err, req, res, _next) => {
   res.json(body);
 };
 
-export { notFound, errorHandler };
+export { notFound, errorHandler, sanitizeLogInput };
