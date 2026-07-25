@@ -77,12 +77,40 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <header className="mb-10 flex flex-col md:flex-row justify-between items-start gap-4">
-        <div>
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-2">Welcome to EduCrate 📚</h2>
-          <p className="text-textMuted max-w-2xl text-sm md:text-base">
-            Browse, upload, and share CS resources freely — no account needed. There {recentResources.length === 1 ? 'is' : 'are'} <span className="text-white font-medium">{recentResources.length} resource{recentResources.length !== 1 ? 's' : ''}</span> uploaded by the community so far.
+      <header className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-gray-800">
+        <div className="space-y-3 max-w-2xl">
+          {/* Pill Badge */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold uppercase tracking-wider">
+            <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+            KTU 2024 Scheme
+          </div>
+
+          {/* Main Title */}
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight">
+            Welcome to <span className="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">EduCrate</span> 📚
+          </h1>
+
+          {/* Subtitle / Description */}
+          <p className="text-gray-400 text-base md:text-lg leading-relaxed">
+            Browse, upload, and share Computer Science resources freely — no account needed.
           </p>
+        </div>
+
+        {/* Right Side Stat Badge */}
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-900/60 border border-gray-800 backdrop-blur-sm self-start md:self-auto shrink-0">
+          <div className="p-2.5 bg-blue-500/10 rounded-lg text-blue-400">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          </div>
+          <div>
+            <div className="text-xl font-bold text-white">
+              {recentResources.length}
+            </div>
+            <div className="text-xs text-gray-400">
+              Community Resource{recentResources.length !== 1 ? 's' : ''}
+            </div>
+          </div>
         </div>
       </header>
 
@@ -182,23 +210,23 @@ export default function Dashboard() {
           <h2 className="text-2xl font-bold text-white mb-1">2024 scheme Computer Science PYQs</h2>
           <p className="text-sm text-textMuted">Access previous year questions for the latest academic scheme</p>
         </div>
-        
-        <div 
+
+        <div
           onClick={() => navigate('/pyqs')}
           className="group relative p-6 md:p-8 rounded-2xl overflow-hidden cursor-pointer bg-gradient-to-r from-[#1c2235] to-[#151a28] border border-white/10 hover:border-indigo-500/50 transition-all flex flex-col sm:flex-row items-center gap-6"
         >
           {/* Subtle background glow */}
           <div className="absolute -inset-full bg-gradient-to-r from-transparent via-indigo-500/10 to-transparent group-hover:animate-[shimmer_2s_infinite] pointer-events-none" />
-          
+
           <div className="w-16 h-16 rounded-2xl bg-indigo-500 flex items-center justify-center flex-shrink-0 shadow-[0_0_20px_rgba(99,102,241,0.4)]">
             <span className="text-white text-2xl">📄</span>
           </div>
-          
+
           <div className="flex-1 text-center sm:text-left z-10">
             <h3 className="text-xl font-bold text-white mb-1">Explore 2024 Scheme Repository</h3>
             <p className="text-textMuted text-sm">Browse curated previous year questions, solutions, and study guides for all semesters.</p>
           </div>
-          
+
           <div className="flex items-center gap-2 text-white font-semibold text-sm tracking-wider uppercase z-10">
             VIEW PYQS <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
           </div>
