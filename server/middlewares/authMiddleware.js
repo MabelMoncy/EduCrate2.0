@@ -4,18 +4,13 @@ import { tokenBlacklist } from '../lib/tokenBlacklist.js';
 
 const protectAdmin = async (req, res, next) => {
   try {
-    const token = req.cookies?.educrate_token;
-
-    if (!token) {
-      res.status(401);
-      throw new Error('Admin authorization token is required');
-    }
-
     const secret = process.env.JWT_SECRET;
     if (!secret) {
       res.status(500);
       throw new Error('JWT_SECRET is not configured on the server');
     }
+
+    const token = req.cookies?.educrate_token || '';
 
     let decoded;
     try {
