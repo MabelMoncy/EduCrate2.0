@@ -2,9 +2,9 @@ name: "CodeQL Security & Quality Analysis"
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, dev ]
   schedule:
     - cron: '0 6 * * 1' # Weekly automatic scan every Monday at 06:00 UTC
 

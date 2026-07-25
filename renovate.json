@@ -1,50 +1,63 @@
 {
-    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-    "extends": [
-        "config:recommended"
-    ],
-    "packageRules": [
-        {
-            "description": "Automatically merge safe Patch and Minor updates if CI passes",
-            "matchUpdateTypes": [
-                "minor",
-                "patch",
-                "pin",
-                "digest"
-            ],
-            "automerge": true,
-            "automergeType": "pr",
-            "platformAutomerge": true
-        },
-        {
-            "description": "DO NOT automerge Major/Breaking Updates - Require PR & Manual Approval",
-            "matchUpdateTypes": [
-                "major"
-            ],
-            "automerge": false,
-            "labels": [
-                "major-update",
-                "needs-manual-review"
-            ]
-        },
-        {
-            "description": "Stop at PR for core MERN framework updates",
-            "matchPackageNames": [
-                "express",
-                "mongoose",
-                "react",
-                "react-dom"
-            ],
-            "matchUpdateTypes": [
-                "major"
-            ],
-            "automerge": false,
-            "labels": [
-                "core-framework-update"
-            ]
-        }
-    ],
-    "schedule": [
-        "before 4am on Monday"
-    ]
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended"
+  ],
+  "packageRules": [
+    {
+      "description": "Automatically merge safe Patch and Minor updates if CI passes",
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "pin",
+        "digest"
+      ],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "description": "Group ESLint & Linter updates into a single PR",
+      "matchPackageNames": [
+        "/eslint/"
+      ],
+      "groupName": "ESLint tooling"
+    },
+    {
+      "description": "DO NOT automerge Major/Breaking Updates - Require PR & Manual Approval",
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "automerge": false,
+      "labels": [
+        "major-update",
+        "needs-manual-review"
+      ]
+    },
+    {
+      "description": "Stop at PR for core MERN framework and critical ecosystem updates",
+      "matchPackageNames": [
+        "express",
+        "mongoose",
+        "react",
+        "react-dom",
+        "react-router",
+        "react-router-dom",
+        "firebase",
+        "firebase-admin",
+        "vite",
+        "helmet"
+      ],
+      "matchUpdateTypes": [
+        "major"
+      ],
+      "automerge": false,
+      "labels": [
+        "core-framework-update"
+      ]
+    }
+  ],
+  "schedule": [
+    "before 4am on Monday"
+  ]
 }
