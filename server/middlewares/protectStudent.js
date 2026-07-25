@@ -47,6 +47,7 @@ export const protectStudent = async (req, res, next) => {
     next();
   } catch (error) {
     if (res.statusCode === 200) res.status(401);
-    next(new Error('Not authorized, token failed: ' + error.message));
+    if (res.statusCode === 200) res.status(401);
+    next(new Error('Not authorized, token failed'));
   }
 };
