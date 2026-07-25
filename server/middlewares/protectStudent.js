@@ -19,11 +19,6 @@ export const protectStudent = async (req, res, next) => {
     }
 
     const token = getBearerToken(req);
-    if (!token) {
-      res.status(401);
-      throw new Error('Not authorized, no token');
-    }
-
     const decodedToken = await admin.auth().verifyIdToken(token, true);
 
     // Find or create student
