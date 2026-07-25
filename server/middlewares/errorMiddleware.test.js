@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { notFound, errorHandler, sanitizeLogInput } from './errorMiddleware.js';
+import { notFound, errorHandler, sanitizeLogInput, sanitizeStack } from './errorMiddleware.js';
 
 test('sanitizeLogInput removes carriage return and newline characters', () => {
   assert.equal(sanitizeLogInput('GET\nHTTP/1.1'), 'GETHTTP/1.1');
@@ -8,6 +8,14 @@ test('sanitizeLogInput removes carriage return and newline characters', () => {
   assert.equal(sanitizeLogInput('Normal message'), 'Normal message');
   assert.equal(sanitizeLogInput(null), '');
   assert.equal(sanitizeLogInput(undefined), '');
+});
+
+test('sanitizeStack sanitizes stack header while preserving stack frame lines', () => {
+  const inputStack = 'Error: Database error\r\n[SYSTEM] Injected Line\n    at process (/app/server.js:10:5)\n    at main (/app/server.js:20:1)';
+  const expectedStack = 'Error: Database error[SYSTEM] Injected Line\n    at process (/app/server.js:10:5)\n    at main (/app/server.js:20:1)';
+  assert.equal(sanitizeStack(inputStack), expectedStack);
+  assert.equal(sanitizeStack(null), '');
+  assert.equal(sanitizeStack(undefined), '');
 });
 
 test('notFound sanitizes req.originalUrl before creating error', () => {
@@ -21,7 +29,7 @@ test('notFound sanitizes req.originalUrl before creating error', () => {
   assert.equal(capturedError.message, 'Not Found - /api/resources[ADMIN] User granted access');
 });
 
-test('errorHandler sanitizes req.method, req.originalUrl, and err.message when logging 5xx errors', () => {
+test('errorHandler sanitizes req.method, req.originalUrl, err.message, and err.stack when logging 5xx errors', () => {
   const logs = [];
   const originalConsoleError = console.error;
   console.error = (...args) => { logs.push(args); };
@@ -38,7 +46,7 @@ test('errorHandler sanitizes req.method, req.originalUrl, and err.message when l
       json: () => {},
     };
     const err = new Error('Database error\r\n[SYSTEM] Leak');
-    err.stack = 'Error: Database error';
+    err.stack = 'Error: Database error\r\n[SYSTEM] Leak\n    at dbQuery (/app/db.js:15:2)';
 
     errorHandler(err, req, res, () => {});
 
@@ -48,7 +56,7 @@ test('errorHandler sanitizes req.method, req.originalUrl, and err.message when l
     assert.equal(method, 'POSTHost: evil.com');
     assert.equal(url, '/api/upload[CRITICAL] Server hacked');
     assert.equal(message, 'Database error[SYSTEM] Leak');
-    assert.equal(stack, 'Error: Database error');
+    assert.equal(stack, 'Error: Database error[SYSTEM] Leak\n    at dbQuery (/app/db.js:15:2)');
   } finally {
     console.error = originalConsoleError;
   }

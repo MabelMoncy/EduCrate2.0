@@ -3,6 +3,13 @@ const sanitizeLogInput = (input) => {
   return String(input).replace(/[\r\n]/g, '');
 };
 
+const sanitizeStack = (stack) => {
+  if (typeof stack !== 'string') return '';
+  const atIndex = stack.search(/\n\s+at /);
+  if (atIndex === -1) return sanitizeLogInput(stack);
+  return sanitizeLogInput(stack.slice(0, atIndex)) + stack.slice(atIndex).replace(/\r/g, '');
+};
+
 const notFound = (req, res, next) => {
   const cleanUrl = sanitizeLogInput(req.originalUrl);
   const error = new Error(`Not Found - ${cleanUrl}`);
@@ -30,7 +37,8 @@ const errorHandler = (err, req, res, _next) => {
     const cleanMethod = sanitizeLogInput(req.method);
     const cleanUrl = sanitizeLogInput(req.originalUrl);
     const cleanMessage = sanitizeLogInput(err?.message);
-    console.error('[error] %s %s - %s\n%s', cleanMethod, cleanUrl, cleanMessage, err.stack);
+    const cleanStack = sanitizeStack(err?.stack);
+    console.error('[error] %s %s - %s\n%s', cleanMethod, cleanUrl, cleanMessage, cleanStack);
   }
   const body = {};
   if (is5xx && isProd) {
@@ -48,4 +56,4 @@ const errorHandler = (err, req, res, _next) => {
   res.json(body);
 };
 
-export { notFound, errorHandler, sanitizeLogInput };
+export { notFound, errorHandler, sanitizeLogInput, sanitizeStack };
