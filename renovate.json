@@ -5,7 +5,7 @@
   ],
   "packageRules": [
     {
-      "description": "Automatically merge safe Patch and Minor updates if CI passes",
+      "description": "Automatically merge safe Patch and Minor updates for non-core packages if CI passes",
       "matchUpdateTypes": [
         "minor",
         "patch",
@@ -17,14 +17,7 @@
       "platformAutomerge": true
     },
     {
-      "description": "Group ESLint & Linter updates into a single PR",
-      "matchPackageNames": [
-        "/eslint/"
-      ],
-      "groupName": "ESLint tooling"
-    },
-    {
-      "description": "DO NOT automerge Major/Breaking Updates - Require PR & Manual Approval",
+      "description": "DO NOT automerge Major Updates - Require PR & Manual Approval",
       "matchUpdateTypes": [
         "major"
       ],
@@ -35,25 +28,26 @@
       ]
     },
     {
-      "description": "Stop at PR for core MERN framework and critical ecosystem updates",
+      "description": "Stop at PR for core framework & security packages across ALL update types (major, minor, patch)",
       "matchPackageNames": [
         "express",
         "mongoose",
         "react",
         "react-dom",
-        "react-router",
-        "react-router-dom",
         "firebase",
         "firebase-admin",
-        "vite",
-        "helmet"
+        "helmet",
+        "vite"
       ],
       "matchUpdateTypes": [
-        "major"
+        "major",
+        "minor",
+        "patch"
       ],
       "automerge": false,
       "labels": [
-        "core-framework-update"
+        "core-framework-update",
+        "manual-approval-required"
       ]
     }
   ],
