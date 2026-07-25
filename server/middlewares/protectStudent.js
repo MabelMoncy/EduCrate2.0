@@ -1,28 +1,29 @@
 import Student from '../models/Student.js';
 import { admin, isFirebaseAdminReady } from '../lib/firebaseAdmin.js';
 
+const getBearerToken = (req) => {
+  const authHeader = req.headers.authorization;
+  if (typeof authHeader !== 'string') return '';
+  const trimmed = authHeader.trim();
+  if (trimmed.toLowerCase().startsWith('bearer ')) {
+    return trimmed.substring(7).trim();
+  }
+  return '';
+};
+
 export const protectStudent = async (req, res, next) => {
   try {
-    let token;
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-      token = req.headers.authorization.split(' ')[1];
-    }
-
-    if (!token) {
-      res.status(401);
-      throw new Error('Not authorized, no token');
-    }
-
     if (!isFirebaseAdminReady()) {
-      res.status(500);
+      res.status(503);
       throw new Error('Firebase Admin SDK is not initialized');
     }
 
-    const decodedToken = await admin.auth().verifyIdToken(token);
-    
+    const token = getBearerToken(req);
+    const decodedToken = await admin.auth().verifyIdToken(token, true);
+
     // Find or create student
     let student = await Student.findOne({ firebaseUid: decodedToken.uid });
-    
+
     if (!student && decodedToken.email) {
       // Fallback: Check if student exists by email (happens if Firebase user was deleted and re-created)
       student = await Student.findOne({ email: decodedToken.email });
@@ -45,7 +46,8 @@ export const protectStudent = async (req, res, next) => {
     req.firebaseUser = decodedToken;
     next();
   } catch (error) {
-    res.status(401);
-    next(new Error('Not authorized, token failed: ' + error.message));
+    if (res.statusCode === 200) res.status(401);
+    if (res.statusCode === 200) res.status(401);
+    next(new Error('Not authorized, token failed'));
   }
 };
