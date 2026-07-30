@@ -26,13 +26,11 @@ export const triggerCleanup = async (req, res) => {
   const bearerToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
   const providedSecret = bearerToken || customHeader;
 
-  const providedBuf = Buffer.from(providedSecret || '');
-  const secretBuf = Buffer.from(cronSecret);
+  const key = crypto.randomBytes(32);
+  const a = crypto.createHmac('sha256', key).update(String(providedSecret || '')).digest();
+  const b = crypto.createHmac('sha256', key).update(String(cronSecret)).digest();
 
-  const isValid =
-    providedSecret != null &&
-    providedBuf.length === secretBuf.length &&
-    crypto.timingSafeEqual(providedBuf, secretBuf);
+  const isValid = providedSecret != null && crypto.timingSafeEqual(a, b);
 
   if (!isValid) {
     return res.status(401).json({
