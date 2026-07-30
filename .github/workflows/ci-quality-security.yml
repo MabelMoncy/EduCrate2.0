@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [main, dev]
   schedule:
-    - cron: '0 0 * * 1'
+    - cron: '17 2 * * 1'
   workflow_dispatch:
 
 concurrency:
@@ -71,7 +71,7 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Security Audit (Client Dependencies)
-        run: npm audit --audit-level=high --omit=optional || true
+        run: npm audit --audit-level=high --omit=optional
 
       - name: Lint Code
         run: npm run lint
