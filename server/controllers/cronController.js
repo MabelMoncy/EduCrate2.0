@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { cleanupSoftDeletedRecords } from '../cron/cleanup.js';
 
 /**
@@ -25,7 +26,13 @@ export const triggerCleanup = async (req, res) => {
   const bearerToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
   const providedSecret = bearerToken || customHeader;
 
-  if (!providedSecret || providedSecret !== cronSecret) {
+  const key = crypto.randomBytes(32);
+  const a = crypto.createHmac('sha256', key).update(String(providedSecret || '')).digest();
+  const b = crypto.createHmac('sha256', key).update(String(cronSecret)).digest();
+
+  const isValid = providedSecret != null && crypto.timingSafeEqual(a, b);
+
+  if (!isValid) {
     return res.status(401).json({
       success: false,
       message: 'Unauthorized cron execution request.',
