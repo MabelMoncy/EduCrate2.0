@@ -16,6 +16,7 @@ import { cacheMiddleware } from '../lib/cache.js';
 
 import { uploadPYQ, listPYQs, deletePYQ, getPYQViewUrl, getPendingPYQs, getMyPYQUploads, approvePYQ, rejectPYQ } from '../controllers/pyqController.js';
 import { getMyNotifications, markNotificationRead } from '../controllers/notificationController.js';
+import { triggerCleanup } from '../controllers/cronController.js';
 
 const router = express.Router();
 
@@ -92,6 +93,11 @@ router.get('/pyqs/me/uploads', protectUser, getMyPYQUploads);
 // ── Notification Routes ────────────────────────────────────────────────────
 router.get('/students/me/notifications', protectUser, getMyNotifications);
 router.patch('/students/me/notifications/:id/read', protectUser, markNotificationRead);
+
+// ── Cron & Automated Maintenance Routes ──────────────────────────────────
+router.route('/cron/cleanup')
+  .get(triggerCleanup)
+  .post(triggerCleanup);
 
 // Health check — standard uptime/readiness probe
 router.get('/health', (req, res) => {

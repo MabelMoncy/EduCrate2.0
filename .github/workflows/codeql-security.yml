@@ -4,9 +4,9 @@ on:
   push:
     branches: [ main, dev ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, dev ]
   schedule:
-    - cron: '0 6 * * 1' # Weekly automatic scan every Monday at 06:00 UTC
+    - cron: '43 5 * * 1' # Weekly automatic scan every Monday at 05:43 UTC
 
 permissions:
   actions: read

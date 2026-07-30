@@ -41,7 +41,7 @@ const destroyCloudinaryAsset = async (publicId) => {
   }
 };
 
-const cleanupSoftDeletedRecords = async () => {
+export const cleanupSoftDeletedRecords = async () => {
   console.log('[CRON] Starting daily cleanup of soft-deleted records...');
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24 hours ago
 
@@ -73,9 +73,11 @@ const cleanupSoftDeletedRecords = async () => {
       pyqCount++;
     }
     console.log(`[CRON] Permanently removed ${pyqCount} PYQs.`);
+    return { success: true, resourceCount, pyqCount };
 
   } catch (error) {
     console.error('[CRON] Cleanup job error:', error.message);
+    return { success: false, error: error.message };
   }
 };
 
