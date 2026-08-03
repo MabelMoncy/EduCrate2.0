@@ -14,8 +14,16 @@ export const cacheMiddleware = (duration = 300) => {
       return next();
     }
 
-    // Use URL + query params as the cache key
-    const key = '__express__' + req.originalUrl || req.url;
+    // Normalize cache key to prevent parameter ordering pollution
+    const rawUrl = req.originalUrl || req.url;
+    const [path, queryString] = rawUrl.split('?');
+    let normalizedQuery = '';
+    if (queryString) {
+      const params = new URLSearchParams(queryString);
+      params.sort();
+      normalizedQuery = '?' + params.toString();
+    }
+    const key = '__express__' + path + normalizedQuery;
     const cachedBody = cache.get(key);
 
     if (cachedBody) {

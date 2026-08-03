@@ -104,7 +104,7 @@ export default function Semester() {
       return;
     }
 
-    const nextTab = window.open('', '_blank');
+    const nextTab = window.open('', '_blank', 'noopener,noreferrer');
     if (nextTab) nextTab.opener = null;
 
     try {

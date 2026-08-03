@@ -21,6 +21,11 @@ export const protectStudent = async (req, res, next) => {
     const token = getBearerToken(req);
     const decodedToken = await admin.auth().verifyIdToken(token, true);
 
+    if (process.env.FIREBASE_REQUIRE_VERIFIED_EMAIL !== 'false' && decodedToken.email && decodedToken.email_verified !== true) {
+      res.status(403);
+      throw new Error('Please verify your email before accessing this resource.');
+    }
+
     // Find or create student
     let student = await Student.findOne({ firebaseUid: decodedToken.uid });
 
@@ -47,7 +52,6 @@ export const protectStudent = async (req, res, next) => {
     next();
   } catch (error) {
     if (res.statusCode === 200) res.status(401);
-    if (res.statusCode === 200) res.status(401);
-    next(new Error('Not authorized, token failed'));
+    next(error.message && error.statusCode ? error : new Error(error.message || 'Not authorized, token failed'));
   }
 };

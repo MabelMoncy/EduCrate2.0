@@ -92,6 +92,13 @@ app.use(express.urlencoded({ extended: true }));
 const mongoSanitize = () => (req, _res, next) => {
   if (req.body) expressMongoSanitize.sanitize(req.body, { allowDots: false });
   if (req.params) expressMongoSanitize.sanitize(req.params, { allowDots: false });
+  if (req.query && typeof req.query === 'object') {
+    const sanitized = { ...req.query };
+    expressMongoSanitize.sanitize(sanitized, { allowDots: false });
+    req.sanitizedQuery = sanitized;
+  } else {
+    req.sanitizedQuery = {};
+  }
   next();
 };
 app.use(mongoSanitize());

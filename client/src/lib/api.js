@@ -17,7 +17,7 @@ const authHeaders = async () => {
  * The csrf_token cookie is set by the server on login (httpOnly: false)
  * so JavaScript can read it here and echo it as the X-CSRF-Token header.
  */
-const getCsrfToken = () => {
+export const getCsrfToken = () => {
   const match = document.cookie.match(/(?:^|;\s*)csrf_token=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : '';
 };

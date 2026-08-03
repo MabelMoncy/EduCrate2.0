@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2, Trash2, FileQuestion, Plus, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { getCsrfToken } from '../../lib/api';
 import PYQUploadModal from '../../components/PYQUploadModal';
 
 export default function PYQManagement() {
@@ -15,8 +16,8 @@ export default function PYQManagement() {
     try {
       setLoading(true);
       const [publishedRes, pendingRes] = await Promise.all([
-        fetch('/api/pyq'),
-        fetch('/api/pyq/pending', { headers: { Authorization: `Bearer ${user.token}` } })
+        fetch('/api/pyq', { credentials: 'include' }),
+        fetch('/api/pyq/pending', { credentials: 'include' })
       ]);
       const [publishedData, pendingData] = await Promise.all([
         publishedRes.json(),
@@ -29,7 +30,7 @@ export default function PYQManagement() {
     } finally {
       setLoading(false);
     }
-  }, [user.token]);
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -42,7 +43,8 @@ export default function PYQManagement() {
     try {
       const res = await fetch(`/api/pyq/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${user.token}` },
+        credentials: 'include',
+        headers: { 'X-CSRF-Token': getCsrfToken() },
       });
       if (res.ok) {
         setPyqs(pyqs.filter(p => p._id !== id));
@@ -58,7 +60,8 @@ export default function PYQManagement() {
     try {
       const res = await fetch(`/api/pyq/${id}/approve`, {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${user.token}` }
+        credentials: 'include',
+        headers: { 'X-CSRF-Token': getCsrfToken() }
       });
       if (res.ok) fetchData();
     } catch (err) {
@@ -71,7 +74,8 @@ export default function PYQManagement() {
     try {
       const res = await fetch(`/api/pyq/${id}/reject`, {
         method: 'PATCH',
-        headers: { Authorization: `Bearer ${user.token}` }
+        credentials: 'include',
+        headers: { 'X-CSRF-Token': getCsrfToken() }
       });
       if (res.ok) fetchData();
     } catch (err) {

@@ -218,8 +218,9 @@ const sanitise = (str) => str.replace(/[^a-zA-Z0-9\-_]/g, '_');
 // ── @access  Public metadata                                                ────
 const getResources = async (req, res, next) => {
   try {
-    const { limit, page } = req.query;
-    const query = buildResourceQuery(req.query);
+    const queryParams = req.sanitizedQuery || req.query;
+    const { limit, page } = queryParams;
+    const query = buildResourceQuery(queryParams);
 
     const parsedLimit = Math.min(parseInt(limit, 10) || LIMIT_MAX, LIMIT_MAX);
     const parsedPage = Math.max(parseInt(page, 10) || 1, 1);
