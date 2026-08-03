@@ -50,6 +50,7 @@
       ]
     }
   ],
+  "timezone": "Asia/Kolkata",
   "schedule": [
     "before 4am on Monday"
   ]
