@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+
 /**
  * CSRF double-submit cookie protection (H6).
  *
@@ -7,7 +9,7 @@
  *
  * For every state-changing request (POST/PATCH/PUT/DELETE, except the login route itself),
  * the client must echo the csrf_token value as an X-CSRF-Token request header.
- * The server compares the header value against the cookie value.
+ * The server compares the header value against the cookie value using timing-safe comparison.
  *
  * This prevents cross-site request forgery because:
  * 1. SameSite=Strict on the session cookie blocks cross-origin cookie submission
@@ -38,7 +40,14 @@ export const csrfMiddleware = (req, res, next) => {
     const cookieToken = req.cookies?.csrf_token;
     const headerToken = req.headers['x-csrf-token'];
 
-    if (!cookieToken || !headerToken || cookieToken !== headerToken) {
+    const isCsrfValid = Boolean(
+        cookieToken &&
+        headerToken &&
+        cookieToken.length === headerToken.length &&
+        crypto.timingSafeEqual(Buffer.from(cookieToken), Buffer.from(headerToken))
+    );
+
+    if (!isCsrfValid) {
         res.status(403);
         return next(new Error('CSRF token mismatch'));
     }

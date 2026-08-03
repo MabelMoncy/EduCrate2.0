@@ -38,7 +38,7 @@ export default function AdminOverview() {
       }
     };
 
-    if (user?.token) {
+    if (user) {
       fetchAllData();
     }
   }, [user]);

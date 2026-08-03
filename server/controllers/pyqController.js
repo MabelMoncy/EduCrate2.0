@@ -10,7 +10,18 @@ const VALID_SEMESTERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'];
 
 const sanitise = (str) => str.replace(/[^a-zA-Z0-9\-_]/g, '_');
 
-
+const stripHtml = (str) => {
+  if (typeof str !== 'string') return '';
+  let sanitized = str.substring(0, 2000);
+  let prev;
+  let passes = 0;
+  do {
+    prev = sanitized;
+    sanitized = sanitized.replace(/<[^><]*>/g, '');
+    passes++;
+  } while (sanitized !== prev && passes < 10);
+  return sanitized;
+};
 
 // @desc    Upload a new PYQ (Admin or Student)
 // @route   POST /api/pyq
@@ -64,8 +75,8 @@ export const uploadPYQ = async (req, res, next) => {
     const status = isAdmin ? 'published' : 'pending';
 
     const pyq = await PYQ.create({
-      title: title.trim().substring(0, 200),
-      description: description ? description.trim().substring(0, 1000) : '',
+      title: stripHtml(title.trim()).substring(0, 200),
+      description: description ? stripHtml(description.trim()).substring(0, 1000) : '',
       semester,
       subject,
       year: parseInt(year, 10),
@@ -92,8 +103,8 @@ export const uploadPYQ = async (req, res, next) => {
 // @access  Public (Metadata only)
 export const listPYQs = async (req, res, next) => {
   try {
-    // Fix: destructure ALL needed params including limit and page
-    const { semester, year, subject, limit, page } = req.query;
+    const queryParams = req.sanitizedQuery || req.query;
+    const { semester, year, subject, limit, page } = queryParams;
     const query = { isDeleted: false, status: 'published' }; // Only published PYQs
     if (semester && VALID_SEMESTERS.includes(semester)) query.semester = { $eq: semester };
     const parsedYear = parseInt(year, 10);

@@ -48,7 +48,7 @@ const errorHandler = (err, req, res, _next) => {
     // 4xx errors carry intentional, safe messages (e.g. "Invalid semester", "File too large")
     // In dev from localhost, also include stack for 5xx debugging
     body.message = err.message;
-    if (!isProd && isLocal && err.stack) {
+    if (!isProd && err.stack) {
       body.stack = err.stack;
     }
   }
