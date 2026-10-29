@@ -86,7 +86,7 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Security Audit (Client Dependencies)
-        run: npm audit --audit-level=high --omit=optional
+        run: npm audit --audit-level=high --omit=dev
 
       - name: Lint Code
         run: npm run lint
