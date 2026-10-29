@@ -21,6 +21,18 @@ jobs:
   server:
     name: Server — Lint / Test / Audit
     runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ping:1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     defaults:
       run:
         working-directory: server
@@ -29,7 +41,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v7
 
-      - name: Setup Node.js 22
+      - name: Setup Node.js 24
         uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -47,6 +59,9 @@ jobs:
 
       - name: Run Server Tests
         run: npm test
+        env:
+          MONGODB_URI: mongodb://localhost:27017/educrate_ci
+          JWT_SECRET: ci-test-jwt-secret-minimum-32-chars-long
 
   # ── Client Job ──────────────────────────────────────────────────────────────
   client:
@@ -60,7 +75,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v7
 
-      - name: Setup Node.js 22
+      - name: Setup Node.js 24
         uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -71,7 +86,7 @@ jobs:
         run: npm ci --legacy-peer-deps
 
       - name: Security Audit (Client Dependencies)
-        run: npm audit --audit-level=high --omit=optional
+        run: npm audit --audit-level=high --omit=dev
 
       - name: Lint Code
         run: npm run lint

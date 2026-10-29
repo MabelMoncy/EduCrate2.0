@@ -48,6 +48,17 @@
         "core-framework-update",
         "manual-approval-required"
       ]
+    },
+    {
+      "description": "Disable automerge for GitHub Actions major version bumps to prevent unattended breaking workflow changes",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": [
+        "github-actions",
+        "major-update",
+        "needs-manual-review"
+      ]
     }
   ],
   "timezone": "Asia/Kolkata",
