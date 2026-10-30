@@ -13,6 +13,9 @@ EduCrate is a full-stack web application built using the MERN stack designed to 
 - **Icons:** Lucide React
 - **HTTP Client:** Axios
 
+# Architecture
+<img width="7874" height="8183" alt="diagram" src="https://github.com/user-attachments/assets/c5a4de57-2c00-4815-8707-59c611ac16da" />
+
 ### Backend (server)
 - **Environment:** Node.js
 - **Framework:** Express.js
