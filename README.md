@@ -21,7 +21,6 @@ EduCrate is a full-stack web application built using the MERN stack designed to 
 - **Security:** Helmet, Express Rate Limit, Express Mongo Sanitize, cors, bcryptjs
 - **Authentication:** JSON Web Tokens (JWT) & Firebase Admin SDK
 
-[![Architecture diagram of mabelmoncy/educrate2.0](https://gitdiagram.com/mabelmoncy/educrate2.0/diagram.png)](https://gitdiagram.com/mabelmoncy/educrate2.0?utm_source=readme&utm_medium=picture)
 ## 3. Installation and Setup
 
 ### Prerequisites
