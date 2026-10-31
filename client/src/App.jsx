@@ -1,19 +1,30 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import Dashboard from './pages/Dashboard';
-import Semester from './pages/Semester';
-import About from './pages/About';
 import ErrorBoundary from './components/ErrorBoundary';
-import Login from './pages/Login';
-import AdminLayout from './pages/admin/AdminLayout';
-import AdminOverview from './pages/admin/AdminOverview';
-import ResourceManagement from './pages/admin/ResourceManagement';
-import SubjectConfiguration from './pages/admin/SubjectConfiguration';
-import PYQManagement from './pages/admin/PYQManagement';
 import { useAuth } from './context/AuthContext';
 import SplashScreen from './components/SplashScreen';
 import SignInPrompt from './components/SignInPrompt';
-import NotFound from './pages/NotFound';
+
+// Core Landing Page loaded directly for instant initial render
+import Dashboard from './pages/Dashboard';
+
+// Route Code-Splitting: Secondary pages loaded on-demand
+const Semester = lazy(() => import('./pages/Semester'));
+const About = lazy(() => import('./pages/About'));
+const Login = lazy(() => import('./pages/Login'));
+const Library = lazy(() => import('./pages/Library'));
+const PYQHub = lazy(() => import('./pages/PYQHub'));
+const PYQYears = lazy(() => import('./pages/PYQYears'));
+const PYQSubjects = lazy(() => import('./pages/PYQSubjects'));
+const Account = lazy(() => import('./pages/Account'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+
+// Admin Pages: Lazy-loaded only when admin navigates to /admin
+const AdminLayout = lazy(() => import('./pages/admin/AdminLayout'));
+const AdminOverview = lazy(() => import('./pages/admin/AdminOverview'));
+const ResourceManagement = lazy(() => import('./pages/admin/ResourceManagement'));
+const SubjectConfiguration = lazy(() => import('./pages/admin/SubjectConfiguration'));
+const PYQManagement = lazy(() => import('./pages/admin/PYQManagement'));
 
 function AdminRoute({ children }) {
   const location = useLocation();
@@ -26,11 +37,16 @@ function AdminRoute({ children }) {
   return children;
 }
 
-import PYQHub from './pages/PYQHub';
-import PYQYears from './pages/PYQYears';
-import PYQSubjects from './pages/PYQSubjects';
-import Account from './pages/Account';
-import Library from './pages/Library';
+function PageFallback() {
+  return (
+    <div className="min-h-screen bg-[#0b1326] flex items-center justify-center p-4">
+      <div className="flex flex-col items-center gap-3">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-indigo-500/20 border-t-indigo-500" />
+        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Loading EduCrate...</span>
+      </div>
+    </div>
+  );
+}
 
 function App() {
   const { isSignedIn, openSignInPrompt } = useAuth();
@@ -51,7 +67,8 @@ function App() {
     <ErrorBoundary>
       {!splashDone && <SplashScreen onFinish={handleSplashFinish} />}
       {splashDone && (
-          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <Suspense fallback={<PageFallback />}>
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/semester/:id" element={<Semester />} />
@@ -78,7 +95,8 @@ function App() {
               {/* Catch-all — must be last */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </Router>
+          </Suspense>
+        </Router>
       )}
       <SignInPrompt />
     </ErrorBoundary>
