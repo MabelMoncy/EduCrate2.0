@@ -2,11 +2,16 @@ name: "CodeQL Security & Quality Analysis"
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [main]
   pull_request:
-    branches: [ main, dev ]
+    branches: [main]
   schedule:
-    - cron: '43 5 * * 1' # Weekly automatic scan every Monday at 05:43 UTC
+    - cron: '43 5 * * 1' # Weekly scan every Monday at 05:43 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   actions: read
@@ -27,15 +32,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
+          build-mode: none # JS/TS is interpreted, so no build/autobuild step is needed
           queries: security-and-quality
-
-      - name: Autobuild
-        uses: github/codeql-action/autobuild@v4
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4

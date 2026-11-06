@@ -2,7 +2,11 @@ name: Dependency Review
 
 on:
   pull_request:
-    branches: [main, dev]
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -12,17 +16,22 @@ jobs:
   dependency-review:
     name: Dependency Review — Block vulnerable PRs
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Dependency Review
         uses: actions/dependency-review-action@v5
         with:
           # Block PRs that introduce HIGH or CRITICAL vulnerabilities
           fail-on-severity: high
-          # Allow standard permissive open-source licenses (including OFL-1.1 for open-source fonts)
+          # If a PR fails on a legitimate license (e.g. 0BSD, Unlicense,
+          # MPL-2.0, Python-2.0), review it and add it here deliberately.
           allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, CC0-1.0, CC-BY-4.0, BlueOak-1.0.0, OFL-1.1
-          # Comment on the PR with a summary of findings
-          comment-summary-in-pr: always
+          # Only comment when something fails (less noise; also avoids
+          # comment errors on fork PRs with a read-only token)
+          comment-summary-in-pr: on-failure
