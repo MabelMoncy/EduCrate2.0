@@ -1,0 +1,51 @@
+name: NPM Audit
+
+# Runs weekly and on demand, so a newly published advisory never blocks
+# unrelated PRs. Dependency Review already blocks PRs that INTRODUCE
+# vulnerable packages. Do NOT mark this workflow as a required check.
+on:
+  schedule:
+    - cron: '30 3 * * 1'
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'client/package*.json'
+      - 'server/package*.json'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Audit — ${{ matrix.project }} (production deps)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [server, client]
+
+    defaults:
+      run:
+        working-directory: ${{ matrix.project }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # Audit only reads the lockfile, so no install is needed.
+      - name: npm audit (high and above, production deps only)
+        run: npm audit --audit-level=high --omit=dev
