@@ -4,13 +4,22 @@
     <meta charset="UTF-8" />
     <!-- Security meta tags -->
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self';
+                   script-src 'self';
+                   style-src 'self' 'unsafe-inline';
+                   font-src 'self';
+                   img-src 'self' data: https://res.cloudinary.com;
+                   connect-src 'self';
+                   frame-src 'none';
+                   object-src 'none';" />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EduCrate | Digital Repository</title>
     <meta name="theme-color" content="#1a2035" />
     <link rel="apple-touch-icon" href="/pwa-192x192.png" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   </head>
   <body class="bg-[#0f1523] text-white font-inter">
     <div id="root"></div>
