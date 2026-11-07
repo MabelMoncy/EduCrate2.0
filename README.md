@@ -101,3 +101,6 @@ cd client
 npm run dev
 ```
 The frontend application will compile and become available at `http://localhost:3000`.
+## CodeRabbit Integration Test
+
+This section verifies the CodeRabbit GitHub integration.
