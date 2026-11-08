@@ -32,6 +32,14 @@ jobs:
           # If a PR fails on a legitimate license (e.g. 0BSD, Unlicense,
           # MPL-2.0, Python-2.0), review it and add it here deliberately.
           allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, CC0-1.0, CC-BY-4.0, BlueOak-1.0.0, OFL-1.1, 0BSD, Python-2.0, PSF-2.0, (MIT OR CC0-1.0)
+          # Packages that use the deprecated 'licenses' array format in
+          # package.json instead of the SPDX 'license' string, causing
+          # package-lock.json to omit the license field entirely.
+          # All three are MIT — confirmed from their LICENSE files.
+          allow-dependencies-licenses: >-
+            pkg:npm/busboy@1.6.0: MIT,
+            pkg:npm/limiter@1.1.5: MIT,
+            pkg:npm/streamsearch@1.1.0: MIT
           # Only comment when something fails (less noise; also avoids
           # comment errors on fork PRs with a read-only token)
           comment-summary-in-pr: on-failure
