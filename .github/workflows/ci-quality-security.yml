@@ -1,3 +1,4 @@
+
 name: CI Quality & Security Pipeline
 
 on:
@@ -18,6 +19,34 @@ permissions:
   contents: read
 
 jobs:
+  # ── Smoke Test Job ──────────────────────────────────────────────────────────
+  smoke:
+    name: Smoke — Infrastructure Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install Server Dependencies
+        run: npm ci --prefix server
+
+      - name: Run Smoke Tests
+        run: npm run test:smoke
+        env:
+          NODE_ENV: test
+          JWT_SECRET: ci-test-jwt-secret-minimum-32-chars-long
+
   # ── Server Job ──────────────────────────────────────────────────────────────
   server:
     name: Server — Lint / Test
@@ -87,9 +116,7 @@ jobs:
           cache: 'npm'
           cache-dependency-path: client/package-lock.json
 
-      # TODO: try plain `npm ci` (without --legacy-peer-deps). If it installs
-      # cleanly, remove the flag. If not, fix the conflicting peer deps or use
-      # "overrides" in client/package.json.
+      # Keep this flag until peer dependency conflicts are resolved.
       - name: Install Dependencies
         run: npm ci --legacy-peer-deps
 

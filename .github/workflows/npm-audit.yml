@@ -1,8 +1,8 @@
+
 name: NPM Audit
 
-# Runs weekly and on demand, so a newly published advisory never blocks
-# unrelated PRs. Dependency Review already blocks PRs that INTRODUCE
-# vulnerable packages. Do NOT mark this workflow as a required check.
+# Runs weekly and on demand. Also runs when dependency manifests or lockfiles
+# change in a pull request.
 on:
   schedule:
     - cron: '30 3 * * 1'
@@ -10,6 +10,8 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - 'package.json'
+      - 'package-lock.json'
       - 'client/package*.json'
       - 'server/package*.json'
 
@@ -21,6 +23,27 @@ permissions:
   contents: read
 
 jobs:
+  # ── Root Workspace Audit ────────────────────────────────────────────────────
+  root-audit:
+    name: Audit — Root Workspaces (production deps)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js 24
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Audit Root Workspace Dependencies
+        run: npm audit --audit-level=high --omit=dev
+
+  # ── Server and Client Audits ────────────────────────────────────────────────
   audit:
     name: Audit — ${{ matrix.project }} (production deps)
     runs-on: ubuntu-latest
@@ -46,6 +69,6 @@ jobs:
         with:
           node-version: 24
 
-      # Audit only reads the lockfile, so no install is needed.
-      - name: npm audit (high and above, production deps only)
+      # Audit reads the lockfile, so dependency installation is not required.
+      - name: npm audit (high and above, production dependencies only)
         run: npm audit --audit-level=high --omit=dev
