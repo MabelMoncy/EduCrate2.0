@@ -28,6 +28,10 @@ export const disconnectTestDb = async () => {
 
 export const clearCollections = async () => {
   if (mongoose.connection.readyState === 1) {
+    const dbName = mongoose.connection.name || '';
+    if (!/test/i.test(dbName)) {
+      throw new Error(`Refusing to clear non-test database "${dbName}"`);
+    }
     const collections = mongoose.connection.collections;
     for (const key of Object.keys(collections)) {
       await collections[key].deleteMany({});

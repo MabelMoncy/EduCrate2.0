@@ -153,7 +153,7 @@ app.use(async (req, res, next) => {
     await connectDB();
     next();
   } catch (err) {
-    console.error(`[db] Service unavailable for ${req.method} ${req.originalUrl}:`, err.message);
+    console.error('[db] Service unavailable for %s %s: %s', req.method, JSON.stringify(req.originalUrl), err.message);
     res.status(503).json({
       error: 'Database service is temporarily unavailable. Please try again shortly.',
     });

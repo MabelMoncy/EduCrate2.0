@@ -36,10 +36,10 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: server/package-lock.json
+          cache-dependency-path: package-lock.json
 
-      - name: Install Server Dependencies
-        run: npm ci --prefix server
+      - name: Install Dependencies
+        run: npm ci
 
       - name: Run Smoke Tests
         run: npm run test:smoke

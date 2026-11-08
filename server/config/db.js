@@ -15,6 +15,12 @@ const connectDB = async () => {
     return cached.conn;
   }
 
+  // If connection dropped or closed, discard stale promise and cached connection to force reconnect
+  if (cached.conn && mongoose.connection.readyState === 0) {
+    cached.promise = null;
+    cached.conn = null;
+  }
+
   if (!process.env.MONGODB_URI) {
     const error = new Error('MONGODB_URI is not configured in environment variables.');
     console.error('[db] Connection failed:', error.message);

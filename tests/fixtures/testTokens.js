@@ -30,15 +30,15 @@ export const generateExpiredAdminToken = ({
   return { token, jti, userId, role };
 };
 
+const encodeB64Url = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+
 /**
  * Common malformed and attack tokens for security testing.
  */
 export const MALFORMED_TOKENS = {
   empty: '',
   invalidHeader: 'not-a-jwt-token',
-  tamperedSignature:
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjYwZDVlYzQ5ZjFiMmM4MmI4YzhlMTExMSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTYyNDYwMDAwMH0.INVALID_SIGNATURE',
-  noneAlgorithm:
-    'eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJpZCI6IjYwZDVlYzQ5ZjFiMmM4MmI4YzhlMTExMSIsInJvbGUiOiJhZG1pbiJ9.',
+  tamperedSignature: `${encodeB64Url({ alg: 'HS256', typ: 'JWT' })}.${encodeB64Url({ id: '60d5ec49f1b2c82b8c8e1111', role: 'admin', iat: 1624600000 })}.INVALID_SIGNATURE`,
+  noneAlgorithm: `${encodeB64Url({ alg: 'none', typ: 'JWT' })}.${encodeB64Url({ id: '60d5ec49f1b2c82b8c8e1111', role: 'admin' })}.`,
 };
 

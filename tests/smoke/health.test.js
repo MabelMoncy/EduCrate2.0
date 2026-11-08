@@ -40,10 +40,16 @@ describe('Phase 2 Infrastructure Verification', () => {
   it('Database readiness guard blocks data-dependent routes with 503 when DB is offline', async () => {
     // When MongoDB is disconnected, requesting /api/resources should safely fail with 503
     // rather than hanging or silently proceeding into unhandled controller crashes
-    const res = await request.get('/api/resources?semester=S4&subject=OS');
-    assert.equal(res.status, 503);
-    assert.ok(res.body.error);
-    assert.match(res.body.error, /Database service is temporarily unavailable/i);
+    const prevUri = process.env.MONGODB_URI;
+    process.env.MONGODB_URI = 'mongodb://127.0.0.1:27019/educrate_offline_test';
+    try {
+      const res = await request.get('/api/resources?semester=S4&subject=OS');
+      assert.equal(res.status, 503);
+      assert.ok(res.body.error);
+      assert.match(res.body.error, /Database service is temporarily unavailable/i);
+    } finally {
+      process.env.MONGODB_URI = prevUri;
+    }
   });
 
   it('perfBaseline utility records baseline metrics without arbitrary thresholds', async () => {
