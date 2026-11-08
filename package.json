@@ -1,0 +1,26 @@
+{
+  "name": "educrate-monorepo",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "test": "node --test tests/**/*.test.js",
+    "test:server": "npm --prefix server test",
+    "test:client": "npm --prefix client test",
+    "test:smoke": "node --test tests/smoke/**/*.test.js"
+  },
+  "devDependencies": {
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.7.4",
+    "supertest": "^7.3.2"
+  },
+  "allowScripts": {
+    "@firebase/util@1.15.1": true,
+    "@firebase/util@1.15.3": true,
+    "esbuild@0.25.12": true,
+    "protobufjs@7.6.6": true
+  }
+}
