@@ -37,9 +37,9 @@ jobs:
           # package-lock.json to omit the license field entirely.
           # All three are MIT — confirmed from their LICENSE files.
           allow-dependencies-licenses: >-
-            pkg:npm/busboy@1.6.0: MIT,
-            pkg:npm/limiter@1.1.5: MIT,
-            pkg:npm/streamsearch@1.1.0: MIT
+            pkg:npm/busboy@1.6.0,
+            pkg:npm/limiter@1.1.5,
+            pkg:npm/streamsearch@1.1.0
           # Only comment when something fails (less noise; also avoids
           # comment errors on fork PRs with a read-only token)
           comment-summary-in-pr: on-failure
