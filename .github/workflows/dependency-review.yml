@@ -31,13 +31,14 @@ jobs:
           fail-on-severity: high
           # If a PR fails on a legitimate license (e.g. 0BSD, Unlicense,
           # MPL-2.0, Python-2.0), review it and add it here deliberately.
-          allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, CC0-1.0, CC-BY-4.0, BlueOak-1.0.0, OFL-1.1, 0BSD, Python-2.0, PSF-2.0
+          allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, CC0-1.0, CC-BY-3.0, CC-BY-SA-3.0, CC-BY-4.0, BlueOak-1.0.0, OFL-1.1, 0BSD, Python-2.0, PSF-2.0
           # Packages exempted from license checks:
           # - type-fest uses compound SPDX "(MIT OR CC0-1.0)" which the action
           #   silently drops from allow-licenses (strips entries with " OR ").
           # - busboy, limiter, streamsearch use the deprecated 'licenses' array
           #   format; npm omits them from package-lock.json. All are MIT.
-          allow-dependencies-licenses: "pkg:npm/type-fest, pkg:npm/busboy, pkg:npm/limiter, pkg:npm/streamsearch"
+          # - @napi-rs/canvas uses compound "CC-BY-3.0 AND CC-BY-SA-3.0 AND MIT"
+          allow-dependencies-licenses: "pkg:npm/type-fest, pkg:npm/busboy, pkg:npm/limiter, pkg:npm/streamsearch, pkg:npm/@napi-rs/canvas, pkg:npm/%40napi-rs/canvas"
           # Only comment when something fails (less noise; also avoids
           # comment errors on fork PRs with a read-only token)
           comment-summary-in-pr: on-failure
