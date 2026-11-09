@@ -13,13 +13,25 @@ import { csrfMiddleware } from './middlewares/csrfMiddleware.js';
 import { requireJsonContentType } from './middlewares/contentTypeMiddleware.js';
 import { initFirebaseAdmin, isFirebaseAdminReady } from './lib/firebaseAdmin.js';
 import { initCronJobs } from './cron/cleanup.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, '.env') });
 
-// Connect Database
-connectDB();
+const isVercel = process.env.VERCEL === '1' || Boolean(process.env.VERCEL_ENV);
+
+// Initialize Firebase Admin
 initFirebaseAdmin();
-initCronJobs();
+
+// In persistent non-serverless environments, connect immediately and start node-cron
+if (!isVercel && process.env.NODE_ENV !== 'test') {
+  connectDB().catch((err) => {
+    console.error('[db] Initial startup connection error:', err.message);
+  });
+  initCronJobs();
+}
 
 const app = express();
 
@@ -130,6 +142,24 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
+// Database readiness guard for data-dependent routes in serverless & persistent environments
+app.use(async (req, res, next) => {
+  // Routes exempt from database connection: health probes and non-API paths
+  if (req.path === '/api/health' || !req.path.startsWith('/api')) {
+    return next();
+  }
+
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('[db] Service unavailable for %s %s: %s', req.method, JSON.stringify(req.originalUrl), err.message);
+    res.status(503).json({
+      error: 'Database service is temporarily unavailable. Please try again shortly.',
+    });
+  }
+});
+
 // API Routes
 app.use('/api', apiRoutes);
 
@@ -165,36 +195,43 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, () => {
-  const env = process.env.NODE_ENV || 'development';
-  const isProd = env === 'production';
+let server;
+// Only start persistent TCP listener when running locally/dev/container, NEVER in Vercel or test runner
+if (process.env.NODE_ENV !== 'test' && !isVercel) {
+  server = app.listen(PORT, () => {
+    const env = process.env.NODE_ENV || 'development';
+    const isProd = env === 'production';
 
-  if (!isProd) {
-    const firebase = isFirebaseAdminReady() ? '✓ ready' : '✗ not configured (student auth disabled)';
-    console.log('');
-    console.log('  ┌─────────────────────────────────────────────┐');
-    console.log('  │          EduCrate API  ·  DEV               │');
-    console.log('  ├─────────────────────────────────────────────┤');
-    console.log(`  │  port      ${String(PORT).padEnd(33)} │`);
-    console.log(`  │  env       ${env.padEnd(33)} │`);
-    console.log(`  │  firebase  ${firebase.padEnd(33)} │`);
-    console.log('  ├─────────────────────────────────────────────┤');
-    console.log(`  │  http://localhost:${PORT}/api/health             │`);
-    console.log('  └─────────────────────────────────────────────┘');
-    console.log('');
-  } else {
-    // Production: structured JSON line — compatible with log aggregators (Datadog, CloudWatch, etc.)
-    console.log(JSON.stringify({
-      level: 'info',
-      msg: 'server_started',
-      env,
-      pid: process.pid,
-      ts: new Date().toISOString(),
-    }));
-  }
-});
+    if (!isProd) {
+      const firebase = isFirebaseAdminReady() ? '✓ ready' : '✗ not configured (student auth disabled)';
+      console.log('');
+      console.log('  ┌─────────────────────────────────────────────┐');
+      console.log('  │          EduCrate API  ·  DEV               │');
+      console.log('  ├─────────────────────────────────────────────┤');
+      console.log(`  │  port      ${String(PORT).padEnd(33)} │`);
+      console.log(`  │  env       ${env.padEnd(33)} │`);
+      console.log(`  │  firebase  ${firebase.padEnd(33)} │`);
+      console.log('  ├─────────────────────────────────────────────┤');
+      console.log(`  │  http://localhost:${PORT}/api/health             │`);
+      console.log('  └─────────────────────────────────────────────┘');
+      console.log('');
+    } else {
+      // Production: structured JSON line — compatible with log aggregators (Datadog, CloudWatch, etc.)
+      console.log(JSON.stringify({
+        level: 'info',
+        msg: 'server_started',
+        env,
+        pid: process.pid,
+        ts: new Date().toISOString(),
+      }));
+    }
+  });
 
-// Slowloris / connection exhaustion protection
-server.headersTimeout = 20000;  // 20s to receive full headers
-server.requestTimeout = 30000;  // 30s total request timeout
-server.keepAliveTimeout = 65000; // Slightly above typical ALB/proxy 60s idle timeout
+  // Slowloris / connection exhaustion protection
+  server.headersTimeout = 20000;  // 20s to receive full headers
+  server.requestTimeout = 30000;  // 30s total request timeout
+  server.keepAliveTimeout = 65000; // Slightly above typical ALB/proxy 60s idle timeout
+}
+
+export { app, server };
+export default app;
