@@ -1,3 +1,4 @@
+import { pipeline } from 'node:stream';
 import Resource from '../models/Resource.js';
 import AuditLog from '../models/AuditLog.js';
 import Student from '../models/Student.js';
@@ -273,7 +274,7 @@ const getResourceFileUrl = async (req, res, next) => {
       throw new Error('Resource not found');
     }
 
-    if (!resource.storageKey) {
+    if (!resource.storageKey && !resource.fileUrl) {
       res.status(400);
       throw new Error('Missing file reference');
     }
@@ -281,7 +282,9 @@ const getResourceFileUrl = async (req, res, next) => {
     const attachment = req.query.attachment === 'true';
     const expiresAt = Math.floor(Date.now() / 1000) + (10 * 60);
 
-    const url = await getSignedDownloadUrl(resource.storageKey, 10 * 60, { attachment });
+    const url = resource.storageKey
+      ? await getSignedDownloadUrl(resource.storageKey, 10 * 60, { attachment })
+      : resource.fileUrl;
 
     res.json({ url, expiresAt });
   } catch (error) {
@@ -302,17 +305,33 @@ const streamResourceFile = async (req, res, next) => {
     }
 
     if (!resource.storageKey) {
+      if (resource.fileUrl) {
+        return res.redirect(resource.fileUrl);
+      }
       res.status(400);
       throw new Error('Missing file reference');
     }
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'inline');
-
     const { stream, contentType, contentLength } = await getFileObject(resource.storageKey);
-    if (contentType) res.setHeader('Content-Type', contentType);
+
+    if (res.destroyed || res.writableEnded) {
+      if (typeof stream?.destroy === 'function') stream.destroy();
+      return;
+    }
+
+    res.setHeader('Content-Type', contentType || 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline');
     if (contentLength) res.setHeader('Content-Length', contentLength);
-    stream.pipe(res);
+
+    pipeline(stream, res, (err) => {
+      if (err) {
+        if (!res.headersSent) {
+          next(err);
+        } else {
+          res.destroy();
+        }
+      }
+    });
   } catch (error) {
     next(error);
   }

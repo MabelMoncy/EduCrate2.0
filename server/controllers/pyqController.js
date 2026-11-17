@@ -1,3 +1,4 @@
+import { pipeline } from 'node:stream';
 import PYQ from '../models/PYQ.js';
 import Notification from '../models/Notification.js';
 import { validatePdfMagicBytes } from '../middlewares/uploadMiddleware.js';
@@ -184,14 +185,16 @@ export const getPYQViewUrl = async (req, res, next) => {
     const pyqId = req.params.id;
 
     const pyq = await PYQ.findById(pyqId);
-    if (!pyq || !pyq.storageKey) {
+    if (!pyq || (!pyq.storageKey && !pyq.fileUrl)) {
       res.status(404);
       throw new Error('PYQ not found or missing file reference');
     }
 
     const attachment = req.query.attachment === 'true';
     const expiresAt = Math.floor(Date.now() / 1000) + (10 * 60); // 10 minutes TTL
-    const url = await getSignedDownloadUrl(pyq.storageKey, 10 * 60, { attachment });
+    const url = pyq.storageKey
+      ? await getSignedDownloadUrl(pyq.storageKey, 10 * 60, { attachment })
+      : pyq.fileUrl;
 
     res.json({ url, expiresAt });
   } catch (error) {
@@ -207,18 +210,39 @@ export const streamPYQFile = async (req, res, next) => {
     const pyqId = req.params.id;
 
     const pyq = await PYQ.findById(pyqId);
-    if (!pyq || !pyq.storageKey) {
+    if (!pyq) {
       res.status(404);
-      throw new Error('PYQ not found or missing file reference');
+      throw new Error('PYQ not found');
     }
 
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'inline');
+    if (!pyq.storageKey) {
+      if (pyq.fileUrl) {
+        return res.redirect(pyq.fileUrl);
+      }
+      res.status(404);
+      throw new Error('Missing file reference');
+    }
 
     const { stream, contentType, contentLength } = await getFileObject(pyq.storageKey);
-    if (contentType) res.setHeader('Content-Type', contentType);
+
+    if (res.destroyed || res.writableEnded) {
+      if (typeof stream?.destroy === 'function') stream.destroy();
+      return;
+    }
+
+    res.setHeader('Content-Type', contentType || 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline');
     if (contentLength) res.setHeader('Content-Length', contentLength);
-    stream.pipe(res);
+
+    pipeline(stream, res, (err) => {
+      if (err) {
+        if (!res.headersSent) {
+          next(err);
+        } else {
+          res.destroy();
+        }
+      }
+    });
   } catch (error) {
     next(error);
   }

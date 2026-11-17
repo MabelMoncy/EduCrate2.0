@@ -48,10 +48,14 @@ export default function PDFViewerModal({ resource, pyq, item, onClose }) {
 
     const loadDocument = async () => {
       if (!isSignedIn) {
+        setBlobUrl(null);
+        setExternalUrl(null);
         setLoading(false);
         return;
       }
 
+      setBlobUrl(null);
+      setExternalUrl(null);
       setLoading(true);
       setError('');
       setIframeFailed(false);
@@ -69,12 +73,16 @@ export default function PDFViewerModal({ resource, pyq, item, onClose }) {
             : getResourceFileUrl(itemId, { attachment: false }),
         ]);
 
-        if (isMounted) {
-          if (blobResult.status === 'fulfilled') {
+        if (blobResult.status === 'fulfilled') {
+          if (isMounted) {
             createdBlobUrl = blobResult.value;
             setBlobUrl(createdBlobUrl);
+          } else {
+            URL.revokeObjectURL(blobResult.value);
           }
+        }
 
+        if (isMounted) {
           if (urlResult.status === 'fulfilled' && urlResult.value?.url) {
             setExternalUrl(urlResult.value.url);
           }
@@ -120,6 +128,7 @@ export default function PDFViewerModal({ resource, pyq, item, onClose }) {
 
   // Google Drive fallback
   const handleOpenInDrive = () => {
+    if (loading) return;
     const url = externalUrl;
     if (!url) return;
     const nextTab = window.open('', '_blank');
@@ -131,6 +140,7 @@ export default function PDFViewerModal({ resource, pyq, item, onClose }) {
 
   // Download
   const handleDownload = async () => {
+    if (loading) return;
     if (!isSignedIn) {
       openSignInPrompt({ reason: 'download' });
       return;
@@ -152,13 +162,21 @@ export default function PDFViewerModal({ resource, pyq, item, onClose }) {
 
       // Otherwise request a signed download URL
       if (itemId) {
-        const res = isPYQ
-          ? await getPYQFileUrl(itemId, { attachment: true })
-          : await getResourceFileUrl(itemId, { attachment: true });
-        if (res?.url) {
-          const nextTab = window.open('', '_blank');
-          if (nextTab) nextTab.opener = null;
-          if (nextTab) nextTab.location.href = res.url;
+        const nextTab = window.open('', '_blank');
+        if (nextTab) nextTab.opener = null;
+
+        try {
+          const res = isPYQ
+            ? await getPYQFileUrl(itemId, { attachment: true })
+            : await getResourceFileUrl(itemId, { attachment: true });
+          if (res?.url && nextTab) {
+            nextTab.location.href = res.url;
+          } else if (nextTab) {
+            nextTab.close();
+          }
+        } catch (downloadErr) {
+          if (nextTab) nextTab.close();
+          throw downloadErr;
         }
       }
     } catch (err) {
@@ -210,7 +228,8 @@ export default function PDFViewerModal({ resource, pyq, item, onClose }) {
             <button
               type="button"
               onClick={handleOpenInDrive}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs sm:text-sm font-medium text-gray-200 transition-colors"
+              disabled={loading || !externalUrl}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs sm:text-sm font-medium text-gray-200 transition-colors disabled:opacity-50"
               title="Open in Google Drive"
             >
               <ExternalLink size={15} />
@@ -222,7 +241,7 @@ export default function PDFViewerModal({ resource, pyq, item, onClose }) {
           <button
             type="button"
             onClick={handleDownload}
-            disabled={downloading || (!blobUrl && !itemId)}
+            disabled={downloading || loading || (!blobUrl && !itemId)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary hover:bg-primaryHover text-white text-xs sm:text-sm font-medium transition-colors disabled:opacity-50"
             title="Download PDF"
           >
