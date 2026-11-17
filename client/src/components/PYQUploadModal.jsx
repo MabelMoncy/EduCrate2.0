@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { Loader2, X, CheckCircle } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
 import { getSubjectsForSemester } from '../lib/semesterData';
 import { uploadPYQ } from '../lib/api';
 
 export default function PYQUploadModal({ onClose, onSuccess, isAdmin = false }) {
-  const { user, firebaseUser } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
