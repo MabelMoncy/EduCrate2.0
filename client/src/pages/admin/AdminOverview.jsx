@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Loader2, ServerCrash, FileText, Database, Pin, FileQuestion } from 'lucide-react';
-import { getResources } from '../../lib/api';
+import { getResources, getPYQs } from '../../lib/api';
 import { VALID_SEMESTERS } from '../../lib/semesterData';
 import { useAuth } from '../../context/AuthContext';
 
@@ -22,14 +22,13 @@ export default function AdminOverview() {
         setLoading(true);
         setError('');
         
-        // Fetch original resources
-        const resData = await getResources();
-        setResources(resData);
-
-        // Fetch PYQs
-        const pyqRes = await fetch('/api/pyq');
-        const pyqs = await pyqRes.json();
-        setPyqCount(pyqs.length || 0);
+        // Fetch resources and PYQs in parallel
+        const [resData, pyqs] = await Promise.all([
+          getResources(),
+          getPYQs(),
+        ]);
+        setResources(resData || []);
+        setPyqCount(Array.isArray(pyqs) ? pyqs.length : 0);
 
       } catch (err) {
         setError(err.message || 'Failed to load admin overview.');
@@ -38,7 +37,7 @@ export default function AdminOverview() {
       }
     };
 
-    if (user?.token) {
+    if (user) {
       fetchAllData();
     }
   }, [user]);

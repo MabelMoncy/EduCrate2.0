@@ -19,6 +19,7 @@ import {
   Lock,
   Trash2,
   X,
+  Pin,
 } from 'lucide-react';
 import { getResources, getResourceFileUrl } from '../lib/api';
 import { getSubjectsForSemester } from '../lib/semesterData';
@@ -71,6 +72,10 @@ export default function Semester() {
           if (!grouped['Other']) grouped['Other'] = [];
           grouped['Other'].push(r);
         }
+      });
+      // Sort pinned notes to the top of each subject
+      Object.keys(grouped).forEach(subj => {
+        grouped[subj].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0));
       });
       setNotes(grouped);
     } catch (err) {
@@ -212,7 +217,14 @@ export default function Semester() {
         <FileText className="text-primary" size={16} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-white text-sm truncate">{item.title}</p>
+        <p className="font-medium text-white text-sm truncate flex items-center gap-1.5">
+          {item.isPinned && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/25 flex-shrink-0">
+              <Pin size={10} /> Pinned
+            </span>
+          )}
+          <span className="truncate">{item.title}</span>
+        </p>
         <p className="text-xs text-textMuted truncate">{item.description}</p>
         <p className="text-xs text-gray-500 mt-0.5">
           {item.fileSize || '—'} &bull; {item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Unknown date'}
@@ -486,7 +498,14 @@ function FlatNotesList({ items, onPreview, onDownload, onUpload }) {
             <FileText className="text-primary" size={18} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-white text-sm truncate">{item.title}</p>
+            <p className="font-semibold text-white text-sm truncate flex items-center gap-1.5">
+              {item.isPinned && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-400 bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/25 flex-shrink-0">
+                  <Pin size={10} /> Pinned
+                </span>
+              )}
+              <span className="truncate">{item.title}</span>
+            </p>
             <p className="text-xs text-textMuted truncate">{item.description}</p>
             <p className="text-xs text-gray-500 mt-0.5">
               {item.subject && <span className="text-primary/70 mr-2">{item.subject}</span>}

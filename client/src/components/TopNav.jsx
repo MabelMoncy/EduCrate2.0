@@ -1,5 +1,5 @@
 import React from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { LogIn, LogOut, Menu, Search, ShieldAlert, X, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
@@ -44,9 +44,9 @@ export default function TopNav({ onMenuClick }) {
           <button className="md:hidden text-textMuted hover:text-white" onClick={onMenuClick}>
             <Menu size={24} />
           </button>
-          <h1 className="text-xl font-bold text-white tracking-tight flex-shrink-0">
+          <Link to="/" className="text-xl font-bold text-white tracking-tight flex-shrink-0 hover:opacity-90 transition-opacity">
             <span className="text-primary">Edu</span>Crate
-          </h1>
+          </Link>
         </div>
 
         <div className="relative hidden md:block">

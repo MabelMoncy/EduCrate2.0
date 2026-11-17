@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2, Trash2, FileQuestion, Plus, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { getPYQs, getPendingPYQs, approvePYQ, rejectPYQ, deletePYQ } from '../../lib/api';
 import PYQUploadModal from '../../components/PYQUploadModal';
 
 export default function PYQManagement() {
@@ -8,74 +9,71 @@ export default function PYQManagement() {
   const [pyqs, setPyqs] = useState([]);
   const [pendingPyqs, setPendingPyqs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [activeTab, setActiveTab] = useState('published');
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [publishedRes, pendingRes] = await Promise.all([
-        fetch('/api/pyq'),
-        fetch('/api/pyq/pending', { headers: { Authorization: `Bearer ${user.token}` } })
-      ]);
       const [publishedData, pendingData] = await Promise.all([
-        publishedRes.json(),
-        pendingRes.json()
+        getPYQs(),
+        getPendingPYQs(),
       ]);
-      setPyqs(publishedData);
-      setPendingPyqs(pendingData);
+      setPyqs(Array.isArray(publishedData) ? publishedData : []);
+      setPendingPyqs(Array.isArray(pendingData) ? pendingData : []);
     } catch (err) {
-      console.error(err);
+      console.error('[PYQManagement] fetch error:', err);
     } finally {
       setLoading(false);
     }
-  }, [user.token]);
+  }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-
+    if (user) {
+      fetchData();
+    }
+  }, [user, fetchData]);
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this PYQ?')) return;
     try {
-      const res = await fetch(`/api/pyq/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      if (res.ok) {
-        setPyqs(pyqs.filter(p => p._id !== id));
-      } else {
-        alert('Failed to delete PYQ');
-      }
+      setBusyId(id);
+      await deletePYQ(id);
+      setPyqs(prev => prev.filter(p => p._id !== id));
+      setPendingPyqs(prev => prev.filter(p => p._id !== id));
     } catch (err) {
       console.error(err);
+      alert(err.message || 'Failed to delete PYQ');
+    } finally {
+      setBusyId(null);
     }
   };
 
   const handleApprove = async (id) => {
     try {
-      const res = await fetch(`/api/pyq/${id}/approve`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${user.token}` }
-      });
-      if (res.ok) fetchData();
+      setBusyId(id);
+      await approvePYQ(id);
+      await fetchData();
     } catch (err) {
       console.error(err);
+      alert(err.message || 'Failed to approve PYQ');
+    } finally {
+      setBusyId(null);
     }
   };
 
   const handleReject = async (id) => {
     if (!window.confirm('Are you sure you want to reject this PYQ?')) return;
     try {
-      const res = await fetch(`/api/pyq/${id}/reject`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${user.token}` }
-      });
-      if (res.ok) fetchData();
+      setBusyId(id);
+      await rejectPYQ(id);
+      await fetchData();
     } catch (err) {
       console.error(err);
+      alert(err.message || 'Failed to reject PYQ');
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -150,15 +148,30 @@ export default function PYQManagement() {
                   <td className="p-4 text-right">
                     {activeTab === 'pending' ? (
                       <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => handleApprove(p._id)} className="p-2 rounded-lg text-green-400/80 hover:text-green-400 hover:bg-green-500/10 transition-colors" title="Approve">
+                        <button
+                          disabled={busyId === p._id}
+                          onClick={() => handleApprove(p._id)}
+                          className="p-2 rounded-lg text-green-400/80 hover:text-green-400 hover:bg-green-500/10 transition-colors disabled:opacity-50"
+                          title="Approve"
+                        >
                           <CheckCircle2 size={18} />
                         </button>
-                        <button onClick={() => handleReject(p._id)} className="p-2 rounded-lg text-red-400/80 hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Reject">
+                        <button
+                          disabled={busyId === p._id}
+                          onClick={() => handleReject(p._id)}
+                          className="p-2 rounded-lg text-red-400/80 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                          title="Reject"
+                        >
                           <XCircle size={18} />
                         </button>
                       </div>
                     ) : (
-                      <button onClick={() => handleDelete(p._id)} className="p-2 rounded-lg text-red-400/50 hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Delete">
+                      <button
+                        disabled={busyId === p._id}
+                        onClick={() => handleDelete(p._id)}
+                        className="p-2 rounded-lg text-red-400/50 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                        title="Delete"
+                      >
                         <Trash2 size={16} />
                       </button>
                     )}

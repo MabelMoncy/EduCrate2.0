@@ -65,7 +65,11 @@ export const getResources = async (params = {}) => {
     throw new Error('Unable to load resources. Please try again.');
   }
 
-  return response.json();
+  const data = await response.json();
+  if (data && Array.isArray(data.resources)) {
+    return data.resources;
+  }
+  return Array.isArray(data) ? data : [];
 };
 
 export const uploadResource = async (formData) => {
@@ -172,3 +176,113 @@ export const logoutAdmin = async () => {
     credentials: 'include',
   });
 };
+
+export const getPYQs = async (params = {}) => {
+  const queryParams = new URLSearchParams(params).toString();
+  const url = `${API_URL}/pyq${queryParams ? `?${queryParams}` : ''}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: await jsonHeaders(),
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const detail = await readErrorDetail(response, 'Failed to fetch PYQs');
+    if (import.meta.env.DEV) console.error('[api] getPYQs:', detail);
+    throw new Error('Unable to load question papers. Please try again.');
+  }
+
+  return response.json();
+};
+
+export const getPendingPYQs = async () => {
+  const response = await fetch(`${API_URL}/pyq/pending`, {
+    method: 'GET',
+    headers: await jsonHeaders({ auth: false }),
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const detail = await readErrorDetail(response, 'Failed to fetch pending PYQs');
+    if (import.meta.env.DEV) console.error('[api] getPendingPYQs:', detail);
+    throw new Error('Unable to load pending PYQs. Please try again.');
+  }
+
+  return response.json();
+};
+
+export const approvePYQ = async (id) => {
+  const response = await fetch(`${API_URL}/pyq/${id}/approve`, {
+    method: 'PATCH',
+    headers: await jsonHeaders({ csrf: true, auth: false }),
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const detail = await readErrorDetail(response, 'Failed to approve PYQ');
+    if (import.meta.env.DEV) console.error('[api] approvePYQ:', detail);
+    throw new Error('Could not approve PYQ. Please try again.');
+  }
+
+  return response.json();
+};
+
+export const rejectPYQ = async (id) => {
+  const response = await fetch(`${API_URL}/pyq/${id}/reject`, {
+    method: 'PATCH',
+    headers: await jsonHeaders({ csrf: true, auth: false }),
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const detail = await readErrorDetail(response, 'Failed to reject PYQ');
+    if (import.meta.env.DEV) console.error('[api] rejectPYQ:', detail);
+    throw new Error('Could not reject PYQ. Please try again.');
+  }
+
+  return response.json();
+};
+
+export const deletePYQ = async (id) => {
+  const response = await fetch(`${API_URL}/pyq/${id}`, {
+    method: 'DELETE',
+    headers: await jsonHeaders({ csrf: true, auth: false }),
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const detail = await readErrorDetail(response, 'Failed to delete PYQ');
+    if (import.meta.env.DEV) console.error('[api] deletePYQ:', detail);
+    throw new Error('Could not delete PYQ. Please try again.');
+  }
+
+  return response.json();
+};
+
+export const uploadPYQ = async (formData) => {
+  const response = await fetch(`${API_URL}/pyq`, {
+    method: 'POST',
+    // Do NOT set Content-Type header so browser adds boundary
+    headers: {
+      'X-CSRF-Token': getCsrfToken(),
+      ...(await authHeaders()),
+    },
+    credentials: 'include',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const detail = await readErrorDetail(response, 'Failed to upload PYQ');
+    if (import.meta.env.DEV) console.error('[api] uploadPYQ:', detail);
+    let message = 'Upload failed. Please try again.';
+    try {
+      const errorData = await response.json();
+      if (errorData.message) message = errorData.message;
+    } catch (_error) { /* keep default */ }
+    throw new Error(message);
+  }
+
+  return response.json();
+};
+
