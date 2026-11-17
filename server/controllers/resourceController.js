@@ -6,10 +6,13 @@ import { validatePdfMagicBytes } from '../middlewares/uploadMiddleware.js';
 import { scanBuffer } from '../lib/virusScanner.js';
 import { createRequire } from 'node:module';
 import { uploadToCloudinary } from '../lib/cloudinaryUtils.js';
+import https from 'https';
+import http from 'http';
 import {
   uploadPdfWithThumbnail,
   getSignedDownloadUrl,
   getThumbnailObject,
+  getFileObject,
 } from '../lib/storageService.js';
 const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse');
@@ -285,7 +288,7 @@ const getResourceFileUrl = async (req, res, next) => {
 
     let url;
     if (resource.storageKey) {
-      url = await getSignedDownloadUrl(resource.storageKey, 10 * 60);
+      url = await getSignedDownloadUrl(resource.storageKey, 10 * 60, { attachment });
     } else {
       // Legacy notes were uploaded as 'raw', newer ones as 'image'
       const rType = resource.fileUrl && resource.fileUrl.includes('/image/upload/') ? 'image' : 'raw';
@@ -303,6 +306,54 @@ const getResourceFileUrl = async (req, res, next) => {
     }
 
     res.json({ url, expiresAt });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// ── @desc    Stream a resource PDF file directly                              ────
+// ── @route   GET /api/resources/:id/stream                                  ────
+// ── @access  Authenticated admin or Firebase user                           ────
+const streamResourceFile = async (req, res, next) => {
+  try {
+    const resource = await Resource.findById(req.params.id);
+
+    if (!resource) {
+      res.status(404);
+      throw new Error('Resource not found');
+    }
+
+    if (!resource.storageKey && !resource.cloudinaryPublicId) {
+      res.status(400);
+      throw new Error('Missing file reference');
+    }
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline');
+
+    if (resource.storageKey) {
+      const { stream, contentType, contentLength } = await getFileObject(resource.storageKey);
+      if (contentType) res.setHeader('Content-Type', contentType);
+      if (contentLength) res.setHeader('Content-Length', contentLength);
+      stream.pipe(res);
+    } else {
+      const rType = resource.fileUrl && resource.fileUrl.includes('/image/upload/') ? 'image' : 'raw';
+      const signedUrl = cloudinary.utils.private_download_url(
+        resource.cloudinaryPublicId,
+        'pdf',
+        {
+          resource_type: rType,
+          type: 'upload',
+          expires_at: Math.floor(Date.now() / 1000) + (10 * 60),
+        }
+      );
+      const client = signedUrl.startsWith('https') ? https : http;
+      client.get(signedUrl, (stream) => {
+        stream.pipe(res);
+      }).on('error', (err) => {
+        next(err);
+      });
+    }
   } catch (error) {
     next(error);
   }
@@ -644,5 +695,6 @@ export {
   getMyBookmarks,
   getMyUploads,
   getThumbnail,
+  streamResourceFile,
 };
 

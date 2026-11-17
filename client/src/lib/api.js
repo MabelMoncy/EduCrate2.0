@@ -145,6 +145,43 @@ export const getResourceFileUrl = async (id, { attachment = false } = {}) => {
   return response.json();
 };
 
+export const getPYQFileUrl = async (id, { attachment = false } = {}) => {
+  const queryParams = new URLSearchParams();
+  if (attachment) queryParams.set('attachment', 'true');
+
+  const response = await fetch(`${API_URL}/pyq/${id}/view-url?${queryParams.toString()}`, {
+    method: 'GET',
+    headers: await jsonHeaders(),
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const detail = await readErrorDetail(response, 'Failed to prepare PYQ link');
+    if (import.meta.env.DEV) console.error('[api] getPYQFileUrl:', detail);
+    throw new Error('Could not open file. Please try again.');
+  }
+
+  return response.json();
+};
+
+export const fetchPDFBlob = async (id, isPYQ = false) => {
+  const endpoint = isPYQ ? `${API_URL}/pyq/${id}/stream` : `${API_URL}/resources/${id}/stream`;
+  const response = await fetch(endpoint, {
+    method: 'GET',
+    headers: await jsonHeaders(),
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const detail = await readErrorDetail(response, 'Failed to stream PDF');
+    if (import.meta.env.DEV) console.error('[api] fetchPDFBlob:', detail);
+    throw new Error('Could not load PDF document.');
+  }
+
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
+};
+
 export const loginAdmin = async (email, password) => {
   const response = await fetch(`${API_URL}/auth/login`, {
     method: 'POST',

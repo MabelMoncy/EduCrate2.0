@@ -1,3 +1,5 @@
+import https from 'https';
+import http from 'http';
 import PYQ from '../models/PYQ.js';
 import Notification from '../models/Notification.js';
 import cloudinary from '../config/cloudinary.js';
@@ -7,6 +9,7 @@ import { uploadToCloudinary } from '../lib/cloudinaryUtils.js';
 import {
   uploadPdfWithThumbnail,
   getSignedDownloadUrl,
+  getFileObject,
 } from '../lib/storageService.js';
 import { clearCache } from '../lib/cache.js';
 
@@ -209,10 +212,11 @@ export const getPYQViewUrl = async (req, res, next) => {
       throw new Error('PYQ not found or missing file reference');
     }
 
+    const attachment = req.query.attachment === 'true';
     const expiresAt = Math.floor(Date.now() / 1000) + (10 * 60); // 10 minutes TTL
     let url;
     if (pyq.storageKey) {
-      url = await getSignedDownloadUrl(pyq.storageKey, 10 * 60);
+      url = await getSignedDownloadUrl(pyq.storageKey, 10 * 60, { attachment });
     } else {
       url = cloudinary.utils.private_download_url(
         pyq.cloudinaryPublicId,
@@ -220,13 +224,56 @@ export const getPYQViewUrl = async (req, res, next) => {
         {
           resource_type: 'image',
           type: 'upload',
+          ...(attachment ? { attachment: true } : {}),
           expires_at: expiresAt,
-          // intentionally NOT passing attachment:true
         }
       );
     }
 
     res.json({ url, expiresAt });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Stream a PYQ PDF file directly
+// @route   GET /api/pyq/:id/stream
+// @access  Authenticated User
+export const streamPYQFile = async (req, res, next) => {
+  try {
+    const pyqId = req.params.id;
+
+    const pyq = await PYQ.findById(pyqId);
+    if (!pyq || (!pyq.storageKey && !pyq.cloudinaryPublicId)) {
+      res.status(404);
+      throw new Error('PYQ not found or missing file reference');
+    }
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline');
+
+    if (pyq.storageKey) {
+      const { stream, contentType, contentLength } = await getFileObject(pyq.storageKey);
+      if (contentType) res.setHeader('Content-Type', contentType);
+      if (contentLength) res.setHeader('Content-Length', contentLength);
+      stream.pipe(res);
+    } else {
+      const signedUrl = cloudinary.utils.private_download_url(
+        pyq.cloudinaryPublicId,
+        'pdf',
+        {
+          resource_type: 'image',
+          type: 'upload',
+          expires_at: Math.floor(Date.now() / 1000) + (10 * 60),
+        }
+      );
+      const client = signedUrl.startsWith('https') ? https : http;
+      client.get(signedUrl, (stream) => {
+        stream.pipe(res);
+      }).on('error', (err) => {
+        next(err);
+      });
+    }
   } catch (error) {
     next(error);
   }
