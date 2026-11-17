@@ -7,7 +7,7 @@
     "client"
   ],
   "scripts": {
-    "test": "node --test tests/**/*.test.js",
+    "test": "node --test 'tests/**/*.test.js'",
     "test:server": "npm --prefix server test",
     "test:client": "npm --prefix client test",
     "test:smoke": "node --test tests/smoke/**/*.test.js"

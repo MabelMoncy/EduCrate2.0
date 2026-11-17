@@ -6,6 +6,7 @@ import {
   uploadResource,
   deleteResource,
   updateResourcePin,
+  getThumbnail,
 } from '../controllers/resourceController.js';
 import { loginAdmin, logoutAdmin } from '../controllers/authController.js';
 import { protectAdmin } from '../middlewares/authMiddleware.js';
@@ -68,6 +69,7 @@ router.route('/resources/:id')
 
 router.patch('/resources/:id/pin', protectAdmin, updateResourcePin);
 router.get('/resources/:id/file-url', protectAdminOrUser, getResourceFileUrl); // signed file URLs require authentication
+router.get('/storage/thumbnail', getThumbnail); // cached public thumbnails
 
 const pyqCache = cacheMiddleware(300);
 
