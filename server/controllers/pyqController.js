@@ -60,19 +60,14 @@ export const uploadPYQ = async (req, res, next) => {
     const folder = `educrate/pyq/${semester}/${year}/${safeSubject}`;
     const publicId = `${Date.now()}_${safeName}`;
 
-    let storageKey = null;
-    let thumbnailKey = null;
-    let thumbnailUrl = null;
+    let b2 = null;
     let secure_url;
     let cloudinaryPublicId = null;
 
     if (process.env.B2_APPLICATION_KEY) {
       try {
-        const b2Result = await uploadPdfWithThumbnail(file.buffer, folder, publicId);
-        storageKey = b2Result.storageKey;
-        thumbnailKey = b2Result.thumbnailKey;
-        thumbnailUrl = b2Result.thumbnailUrl;
-        secure_url = b2Result.fileUrl;
+        b2 = await uploadPdfWithThumbnail(file.buffer, folder, publicId);
+        secure_url = b2.fileUrl;
       } catch (b2Err) {
         console.error('[Backblaze B2] PYQ upload error:', b2Err);
         res.status(500);
@@ -95,9 +90,9 @@ export const uploadPYQ = async (req, res, next) => {
       semester,
       subject,
       year: parseInt(year, 10),
-      storageKey,
-      thumbnailKey,
-      thumbnailUrl,
+      storageKey: b2?.storageKey,
+      thumbnailKey: b2?.thumbnailKey,
+      thumbnailUrl: b2?.thumbnailUrl,
       cloudinaryPublicId,
       fileUrl: secure_url,
       fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,

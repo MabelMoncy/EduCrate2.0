@@ -420,19 +420,14 @@ const uploadResource = async (req, res, next) => {
     const publicId = `${Date.now()}_${safeName}`;
 
     // ── 8. Upload buffer to Backblaze B2 (with Cloudinary fallback) ───────────
-    let storageKey = null;
-    let thumbnailKey = null;
-    let thumbnailUrl = null;
+    let b2 = null;
     let secure_url;
     let cloudinaryPublicId = null;
 
     if (process.env.B2_APPLICATION_KEY) {
       try {
-        const b2Result = await uploadPdfWithThumbnail(file.buffer, folder, publicId);
-        storageKey = b2Result.storageKey;
-        thumbnailKey = b2Result.thumbnailKey;
-        thumbnailUrl = b2Result.thumbnailUrl;
-        secure_url = b2Result.fileUrl;
+        b2 = await uploadPdfWithThumbnail(file.buffer, folder, publicId);
+        secure_url = b2.fileUrl;
       } catch (b2Err) {
         console.error('[Backblaze B2] Upload error:', b2Err);
         res.status(500);
@@ -461,9 +456,9 @@ const uploadResource = async (req, res, next) => {
       subject,
       type,
       fileUrl: secure_url,
-      storageKey,
-      thumbnailKey,
-      thumbnailUrl,
+      storageKey: b2?.storageKey,
+      thumbnailKey: b2?.thumbnailKey,
+      thumbnailUrl: b2?.thumbnailUrl,
       cloudinaryPublicId, // stored for clean deletes
       fileType: 'pdf',
       fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
