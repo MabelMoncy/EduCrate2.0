@@ -20,14 +20,18 @@ export default function Sidebar({ isOpen, setIsOpen }) {
     <>
       <aside className={`w-64 bg-[#0a0f18] h-screen border-r border-white/5 flex flex-col fixed top-0 left-0 bottom-0 z-40 transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
         <div className="p-6 border-b border-white/5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div
+            onClick={() => handleNav('/')}
+            className="flex items-center gap-3 cursor-pointer group"
+            title="Go to Home"
+          >
             <img
               src="/logo.png"
               alt="EduCrate logo"
-              className="w-10 h-10 rounded-lg object-contain flex-shrink-0"
+              className="w-10 h-10 rounded-lg object-contain flex-shrink-0 transition-transform group-hover:scale-105"
             />
             <div>
-              <h3 className="text-sm font-bold text-white">EduCrate</h3>
+              <h3 className="text-sm font-bold text-white group-hover:text-primary transition-colors">EduCrate</h3>
               <p className="text-xs text-textMuted">CS Department</p>
             </div>
           </div>

@@ -186,8 +186,8 @@ const buildResourceQuery = ({ semester, isPinned, subject, type, search } = {}) 
   if (semester) query.semester = semester;
   if (subject) query.subject = subject;
   if (type) query.type = type;
-  // M15 — only accept the exact string 'true'; ignore operator-injection attempts
-  if (isPinned === 'true') query.isPinned = true;
+  // M15 — only accept the exact string 'true' or boolean true; ignore operator-injection attempts
+  if (isPinned === 'true' || isPinned === true) query.isPinned = true;
 
   if (search && search.trim()) {
     // M13 — enforce length cap before constructing any RegExp object
@@ -232,7 +232,7 @@ const getResources = async (req, res, next) => {
 
     const [resources, total] = await Promise.all([
       Resource.find(query)
-        .sort({ createdAt: -1 })
+        .sort({ isPinned: -1, createdAt: -1 })
         .skip(skip)
         .limit(parsedLimit),
       Resource.countDocuments(query)
@@ -539,6 +539,9 @@ const updateResourcePin = async (req, res, next) => {
       res.status(404);
       throw new Error('Resource not found');
     }
+
+    // Clear cache so pinned/unpinned changes reflect on the frontend instantly
+    clearCache('/resources');
 
     res.json(resource);
   } catch (error) {

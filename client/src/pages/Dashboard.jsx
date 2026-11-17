@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import PDFPreviewModal from '../components/PDFPreviewModal';
-import { FileText, Eye, Loader2, ArrowRight } from 'lucide-react';
+import { FileText, Eye, Loader2, ArrowRight, Pin } from 'lucide-react';
 import { getResources } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -14,9 +14,9 @@ export default function Dashboard() {
   const showAll = searchParams.get('view') === 'all' || !!searchTerm;
 
   const [recentResources, setRecentResources] = useState([]);
+  const [pinnedNotes, setPinnedNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [previewResource, setPreviewResource] = useState(null);
-
 
   const semesters = [
     { id: 'S1', title: 'Semester 1', desc: 'FOUNDATIONS', status: 'completed' },
@@ -32,11 +32,15 @@ export default function Dashboard() {
   const fetchDashboardData = useCallback(async () => {
     try {
       setLoading(true);
-      const recents = await getResources({
-        ...(showAll ? {} : { limit: 3 }),
-        ...(searchTerm ? { search: searchTerm } : {}),
-      });
-      setRecentResources(recents);
+      const [recents, pinned] = await Promise.all([
+        getResources({
+          ...(showAll ? {} : { limit: 3 }),
+          ...(searchTerm ? { search: searchTerm } : {}),
+        }),
+        getResources({ isPinned: 'true', limit: 4 }),
+      ]);
+      setRecentResources(Array.isArray(recents) ? recents : (recents?.resources || []));
+      setPinnedNotes(Array.isArray(pinned) ? pinned : (pinned?.resources || []));
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
     } finally {
@@ -179,7 +183,10 @@ export default function Dashboard() {
                     <FileText size={18} />
                   </div>
                   <div className="flex-1 min-w-0 cursor-pointer" onClick={() => handlePreviewResource(item)}>
-                    <h4 className="text-sm font-medium text-white truncate">{item.title}</h4>
+                    <h4 className="text-sm font-medium text-white truncate flex items-center gap-1.5">
+                      {item.isPinned && <Pin size={13} className="text-amber-400 flex-shrink-0" />}
+                      <span className="truncate">{item.title}</span>
+                    </h4>
                     <p className="text-xs text-textMuted truncate">{item.subject} • {item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Recently'}</p>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -196,6 +203,54 @@ export default function Dashboard() {
         </div>
 
       </div>
+
+      {/* Pinned Department Notes */}
+      {pinnedNotes.length > 0 && !searchTerm && (
+        <section className="mb-12">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-amber-500/10 text-amber-400 rounded-lg">
+              <Pin size={18} />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">Department Pinned Notes</h2>
+              <p className="text-xs text-textMuted">Official reference materials curated by faculty & admins</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {pinnedNotes.map((note) => (
+              <div
+                key={note._id}
+                onClick={() => handlePreviewResource(note)}
+                className="group relative p-4 rounded-xl bg-surface border border-white/8 hover:border-amber-500/40 hover:bg-[#1f2638] transition-all cursor-pointer flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-2.5">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/25 inline-flex items-center gap-1">
+                      <Pin size={10} /> {note.semester}
+                    </span>
+                    <span className="text-[11px] text-textMuted truncate max-w-[120px]">{note.subject}</span>
+                  </div>
+
+                  <h4 className="text-sm font-semibold text-white group-hover:text-amber-300 transition-colors line-clamp-2">
+                    {note.title}
+                  </h4>
+                  {note.description && (
+                    <p className="text-xs text-textMuted line-clamp-1 mt-1">{note.description}</p>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between pt-3 mt-3 border-t border-white/5 text-xs text-textMuted">
+                  <span>{note.fileSize || 'PDF'}</span>
+                  <span className="text-amber-400 flex items-center gap-1 text-[11px] font-medium group-hover:underline">
+                    <Eye size={13} /> View
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {previewResource && (
         <PDFPreviewModal
