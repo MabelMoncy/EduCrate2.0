@@ -24,7 +24,6 @@ export const updateMyProfile = async (req, res, next) => {
       email: updatedStudent.email,
       displayName: updatedStudent.displayName,
       institution: updatedStudent.institution,
-      purchasedPYQs: updatedStudent.purchasedPYQs,
     });
   } catch (error) {
     next(error);

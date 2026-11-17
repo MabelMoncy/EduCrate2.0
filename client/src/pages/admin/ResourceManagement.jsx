@@ -51,7 +51,7 @@ export default function ResourceManagement() {
   };
 
   const handleDelete = async (resource) => {
-    if (!window.confirm(`Delete "${resource.title}"? This removes the MongoDB record and Cloudinary file.`)) return;
+    if (!window.confirm(`Delete "${resource.title}"? This permanently moves it to trash.`)) return;
 
     try {
       setBusyId(resource._id);

@@ -1,13 +1,9 @@
 import Resource from '../models/Resource.js';
 import AuditLog from '../models/AuditLog.js';
 import Student from '../models/Student.js';
-import cloudinary from '../config/cloudinary.js';
 import { validatePdfMagicBytes } from '../middlewares/uploadMiddleware.js';
 import { scanBuffer } from '../lib/virusScanner.js';
 import { createRequire } from 'node:module';
-import { uploadToCloudinary } from '../lib/cloudinaryUtils.js';
-import https from 'https';
-import http from 'http';
 import {
   uploadPdfWithThumbnail,
   getSignedDownloadUrl,
@@ -213,7 +209,7 @@ const buildResourceQuery = ({ semester, isPinned, subject, type, search } = {}) 
 };
 
 /**
- * Sanitises a string so it is safe to use as a Cloudinary folder/public_id segment.
+ * Sanitises a string so it is safe to use as a storage key segment.
  * Replaces any character that isn't alphanumeric, dash, or underscore with an underscore.
  * This prevents path-traversal and injection attacks.
  */
@@ -241,12 +237,11 @@ const getResources = async (req, res, next) => {
       Resource.countDocuments(query)
     ]);
 
-    // Strip internal Cloudinary fields from public metadata responses.
+    // Strip internal storage fields from public metadata responses.
     // Authenticated file access goes through /resources/:id/file-url which generates signed URLs.
     const sanitizedResources = resources.map(doc => {
       const obj = doc.toObject();
       delete obj.fileUrl;
-      delete obj.cloudinaryPublicId;
       return obj;
     });
 
@@ -266,7 +261,7 @@ const getResources = async (req, res, next) => {
   }
 };
 
-// ── @desc    Get a signed Cloudinary URL for a PDF resource                  ────
+// ── @desc    Get a signed Backblaze B2 URL for a PDF resource                ────
 // ── @route   GET /api/resources/:id/file-url                                ────
 // ── @access  Authenticated admin or Firebase user                           ────
 const getResourceFileUrl = async (req, res, next) => {
@@ -278,7 +273,7 @@ const getResourceFileUrl = async (req, res, next) => {
       throw new Error('Resource not found');
     }
 
-    if (!resource.storageKey && !resource.cloudinaryPublicId) {
+    if (!resource.storageKey) {
       res.status(400);
       throw new Error('Missing file reference');
     }
@@ -286,24 +281,7 @@ const getResourceFileUrl = async (req, res, next) => {
     const attachment = req.query.attachment === 'true';
     const expiresAt = Math.floor(Date.now() / 1000) + (10 * 60);
 
-    let url;
-    if (resource.storageKey) {
-      url = await getSignedDownloadUrl(resource.storageKey, 10 * 60, { attachment });
-    } else {
-      // Legacy notes were uploaded as 'raw', newer ones as 'image'
-      const rType = resource.fileUrl && resource.fileUrl.includes('/image/upload/') ? 'image' : 'raw';
-
-      url = cloudinary.utils.private_download_url(
-        resource.cloudinaryPublicId,
-        'pdf',
-        {
-          resource_type: rType,
-          type: 'upload',
-          ...(attachment ? { attachment: true } : {}),
-          expires_at: expiresAt,
-        }
-      );
-    }
+    const url = await getSignedDownloadUrl(resource.storageKey, 10 * 60, { attachment });
 
     res.json({ url, expiresAt });
   } catch (error) {
@@ -323,7 +301,7 @@ const streamResourceFile = async (req, res, next) => {
       throw new Error('Resource not found');
     }
 
-    if (!resource.storageKey && !resource.cloudinaryPublicId) {
+    if (!resource.storageKey) {
       res.status(400);
       throw new Error('Missing file reference');
     }
@@ -331,29 +309,10 @@ const streamResourceFile = async (req, res, next) => {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'inline');
 
-    if (resource.storageKey) {
-      const { stream, contentType, contentLength } = await getFileObject(resource.storageKey);
-      if (contentType) res.setHeader('Content-Type', contentType);
-      if (contentLength) res.setHeader('Content-Length', contentLength);
-      stream.pipe(res);
-    } else {
-      const rType = resource.fileUrl && resource.fileUrl.includes('/image/upload/') ? 'image' : 'raw';
-      const signedUrl = cloudinary.utils.private_download_url(
-        resource.cloudinaryPublicId,
-        'pdf',
-        {
-          resource_type: rType,
-          type: 'upload',
-          expires_at: Math.floor(Date.now() / 1000) + (10 * 60),
-        }
-      );
-      const client = signedUrl.startsWith('https') ? https : http;
-      client.get(signedUrl, (stream) => {
-        stream.pipe(res);
-      }).on('error', (err) => {
-        next(err);
-      });
-    }
+    const { stream, contentType, contentLength } = await getFileObject(resource.storageKey);
+    if (contentType) res.setHeader('Content-Type', contentType);
+    if (contentLength) res.setHeader('Content-Length', contentLength);
+    stream.pipe(res);
   } catch (error) {
     next(error);
   }
@@ -460,42 +419,24 @@ const uploadResource = async (req, res, next) => {
       throw new Error('File size must not exceed 10 MB');
     }
 
-    // ── 7. Build a structured Cloudinary folder & public_id ───────────────────
+    // ── 7. Build a structured storage folder & key ───────────────────────────
     // Folder:    <semester>/<type>/<subject>
     // Public ID: <timestamp>_<filename_without_extension>
     // Example:   S4/notes/Operating_Systems/1716000000000_unit3_notes
     const safeSubject = sanitise(subject);
-    // L34 — cap safeName to 100 chars to stay within Cloudinary public_id limits
+    // L34 — cap safeName to 100 chars to stay within storage key limits
     const safeName = sanitise(file.originalname.replace(/\.pdf$/i, '')).substring(0, 100);
     const folder = `educrate/${semester}/${type}/${safeSubject}`;
     const publicId = `${Date.now()}_${safeName}`;
 
-    // ── 8. Upload buffer to Backblaze B2 (with Cloudinary fallback) ───────────
-    let b2 = null;
-    let secure_url;
-    let cloudinaryPublicId = null;
-
-    if (process.env.B2_APPLICATION_KEY) {
-      try {
-        b2 = await uploadPdfWithThumbnail(file.buffer, folder, publicId);
-        secure_url = b2.fileUrl;
-      } catch (b2Err) {
-        console.error('[Backblaze B2] Upload error:', b2Err);
-        res.status(500);
-        throw new Error('File upload to storage failed. Please try again.');
-      }
-    } else {
-      let uploadResult;
-      try {
-        uploadResult = await uploadToCloudinary(file.buffer, folder, publicId);
-        secure_url = uploadResult.secure_url;
-        cloudinaryPublicId = uploadResult.public_id;
-      } catch (cloudErr) {
-        // M21 — log full Cloudinary error internally, never expose it to clients
-        console.error('[Cloudinary] Upload error:', cloudErr);
-        res.status(500);
-        throw new Error('File upload failed. Please try again.');
-      }
+    // ── 8. Upload buffer to Backblaze B2 ─────────────────────────────────────
+    let b2;
+    try {
+      b2 = await uploadPdfWithThumbnail(file.buffer, folder, publicId);
+    } catch (b2Err) {
+      console.error('[Backblaze B2] Upload error:', b2Err);
+      res.status(500);
+      throw new Error('File upload to storage failed. Please try again.');
     }
 
     // ── 9. Persist metadata in MongoDB ───────────────────────────────────────
@@ -506,11 +447,10 @@ const uploadResource = async (req, res, next) => {
       semester,
       subject,
       type,
-      fileUrl: secure_url,
-      storageKey: b2?.storageKey,
-      thumbnailKey: b2?.thumbnailKey,
-      thumbnailUrl: b2?.thumbnailUrl,
-      cloudinaryPublicId, // stored for clean deletes
+      fileUrl: b2.fileUrl,
+      storageKey: b2.storageKey,
+      thumbnailKey: b2.thumbnailKey,
+      thumbnailUrl: b2.thumbnailUrl,
       fileType: 'pdf',
       fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
       uploadedBy: req.firebaseUser?.uid || req.user?._id?.toString() || 'authenticated',
@@ -554,7 +494,7 @@ const deleteResource = async (req, res, next) => {
     });
 
     // ── Soft delete: mark as deleted so it disappears from the frontend instantly.
-    // Physical Cloudinary + MongoDB removal is handled by the daily CRON job
+    // Physical storage + MongoDB removal is handled by the daily CRON job
     // in cron/cleanup.js after a 24-hour grace period (allows accidental-delete recovery).
     resource.isDeleted = true;
     await resource.save();

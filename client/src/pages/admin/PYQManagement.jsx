@@ -82,7 +82,7 @@ export default function PYQManagement() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-white">PYQ Management</h2>
-          <p className="text-textMuted text-sm mt-1">Manage paid question papers and upload new ones.</p>
+          <p className="text-textMuted text-sm mt-1">Manage question papers and upload new ones.</p>
         </div>
         <button
           onClick={() => setShowUploadModal(true)}
