@@ -52,7 +52,7 @@ export const AuthProvider = ({ children }) => {
       setFirebaseUser(user);
       if (user) {
         try {
-          // Fetch student data from our server (includes purchasedPYQs)
+          // Fetch student data from our server
           const response = await fetch('/api/students/me', {
             headers: { Authorization: `Bearer ${await user.getIdToken()}` }
           });

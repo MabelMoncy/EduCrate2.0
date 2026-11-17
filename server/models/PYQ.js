@@ -32,11 +32,6 @@ const pyqSchema = mongoose.Schema(
     thumbnailUrl: {
       type: String,
     },
-    // Legacy Cloudinary public_id
-    cloudinaryPublicId: {
-      type: String,
-      required: false,
-    },
     fileUrl: {
       type: String,
       required: true,

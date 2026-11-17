@@ -25,13 +25,13 @@ const SERVER_ROOT = path.resolve(__dirname, '..');
 const CLIENT_ROOT = path.resolve(SERVER_ROOT, '..', 'client');
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3.1 — Authenticated admin DELETE soft-deletes resource; CRON handles Cloudinary cleanup
+// 3.1 — Authenticated admin DELETE soft-deletes resource; CRON handles storage cleanup
 //
 // Architecture: deleteResource sets isDeleted=true (soft delete) so admins can
 // recover data. The CRON job in cron/cleanup.js handles physical deletion from
-// Cloudinary + MongoDB after a 24-hour grace period.
+// Backblaze B2 storage + MongoDB after a 24-hour grace period.
 // ─────────────────────────────────────────────────────────────────────────────
-test('3.1 — deleteResource: deletes from MongoDB and calls Cloudinary destroy', () => {
+test('3.1 — deleteResource: deletes from MongoDB and calls storage asset deletion in cron', () => {
     const source = readFileSync(
         path.join(SERVER_ROOT, 'controllers', 'resourceController.js'),
         'utf8'
@@ -43,14 +43,14 @@ test('3.1 — deleteResource: deletes from MongoDB and calls Cloudinary destroy'
         'deleteResource must use soft-delete by setting isDeleted = true'
     );
 
-    // Physical Cloudinary deletion must happen in the CRON cleanup job, not synchronously
+    // Physical storage deletion must happen in the CRON cleanup job, not synchronously
     const cronSource = readFileSync(
         path.join(SERVER_ROOT, 'cron', 'cleanup.js'),
         'utf8'
     );
     assert.ok(
-        cronSource.includes('cloudinary.uploader.destroy'),
-        'Physical Cloudinary deletion must be handled in cron/cleanup.js'
+        cronSource.includes('deleteStorageAsset'),
+        'Physical storage deletion must be handled in cron/cleanup.js'
     );
     assert.ok(
         cronSource.includes('deleteOne') || cronSource.includes('findByIdAndDelete'),
@@ -115,16 +115,16 @@ test('3.2 — updateResourcePin: PATCH /pin updates isPinned field and returns u
 // ─────────────────────────────────────────────────────────────────────────────
 // 3.3 — Valid PDF upload (≤10MB) by authenticated admin returns 201
 // ─────────────────────────────────────────────────────────────────────────────
-test('3.3 — uploadResource: valid PDF upload pipeline stores to Cloudinary, saves to MongoDB, returns 201', () => {
+test('3.3 — uploadResource: valid PDF upload pipeline stores to Backblaze B2, saves to MongoDB, returns 201', () => {
     const source = readFileSync(
         path.join(SERVER_ROOT, 'controllers', 'resourceController.js'),
         'utf8'
     );
 
-    // Must use Cloudinary upload stream
+    // Must use storage upload
     assert.ok(
-        source.includes('upload_stream') || source.includes('uploadToCloudinary'),
-        'uploadResource must upload the file buffer to Cloudinary'
+        source.includes('uploadPdfWithThumbnail'),
+        'uploadResource must upload the file buffer to Backblaze B2'
     );
 
     // Must persist metadata in MongoDB
@@ -219,16 +219,16 @@ test('3.4 — getResources: source code confirms correct query parameter handlin
 // ─────────────────────────────────────────────────────────────────────────────
 // 3.5 — GET /api/resources/:id/file-url returns { url, expiresAt }
 // ─────────────────────────────────────────────────────────────────────────────
-test('3.5 — getResourceFileUrl: generates Cloudinary signed URL and returns { url, expiresAt }', () => {
+test('3.5 — getResourceFileUrl: generates Backblaze B2 signed URL and returns { url, expiresAt }', () => {
     const source = readFileSync(
         path.join(SERVER_ROOT, 'controllers', 'resourceController.js'),
         'utf8'
     );
 
-    // Must use Cloudinary private_download_url (signed URL generation)
+    // Must use getSignedDownloadUrl (signed URL generation)
     assert.ok(
-        source.includes('private_download_url'),
-        'getResourceFileUrl must call cloudinary.utils.private_download_url to generate a signed URL'
+        source.includes('getSignedDownloadUrl'),
+        'getResourceFileUrl must call getSignedDownloadUrl to generate a signed URL'
     );
 
     // Must compute a 10-minute expiry (600 seconds from now)
@@ -509,7 +509,7 @@ test('3.12 — AdminRoute: client-side guard redirects unauthenticated users to 
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 3.13 — window.open sets opener=null on Cloudinary URLs (static code check)
+// 3.13 — window.open sets opener=null on external URLs (static code check)
 // ─────────────────────────────────────────────────────────────────────────────
 test('3.13 — window.open: nextTab.opener = null is set to prevent reverse tabnapping', () => {
     // Check in PDFPreviewModal (primary usage)

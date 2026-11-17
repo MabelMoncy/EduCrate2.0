@@ -119,14 +119,35 @@ export async function uploadPdfWithThumbnail(buffer, folder, fileId) {
  * @param {number} [expiresIn=600] - Time to live in seconds (default 10 minutes)
  * @returns {Promise<string>} - Presigned HTTPS URL
  */
-export async function getSignedDownloadUrl(storageKey, expiresIn = 600) {
+export async function getSignedDownloadUrl(storageKey, expiresIn = 600, options = {}) {
+  const disposition = options?.attachment ? 'attachment' : 'inline';
   const command = new GetObjectCommand({
     Bucket: B2_BUCKET,
     Key: storageKey,
-    ResponseContentDisposition: 'inline',
+    ResponseContentDisposition: disposition,
   });
 
   return getSignedUrl(s3, command, { expiresIn });
+}
+
+/**
+ * Fetches file object from B2 for streaming to client.
+ *
+ * @param {string} storageKey - S3 object key
+ * @returns {Promise<{ stream: any, contentType: string, contentLength: number }>}
+ */
+export async function getFileObject(storageKey) {
+  const command = new GetObjectCommand({
+    Bucket: B2_BUCKET,
+    Key: storageKey,
+  });
+
+  const response = await s3.send(command);
+  return {
+    stream: response.Body,
+    contentType: response.ContentType || 'application/pdf',
+    contentLength: response.ContentLength,
+  };
 }
 
 /**

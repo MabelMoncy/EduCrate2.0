@@ -2,45 +2,17 @@
  * cron/cleanup.js
  *
  * Scheduled background job that permanently removes soft-deleted Resources and PYQs
- * from both Cloudinary (physical file) and MongoDB (database record).
+ * from Backblaze B2 (physical file & thumbnail) and MongoDB (database record).
  *
  * Runs every day at 3:00 AM. Only processes records where:
  *  - isDeleted === true
  *  - updatedAt is older than 24 hours (grace period for accidental-delete recovery)
- *
- * This is the ONLY place in the codebase that calls cloudinary.uploader.destroy
- * and findByIdAndDelete for Resources/PYQs. The admin delete route only soft-deletes.
  */
 
 import cron from 'node-cron';
 import Resource from '../models/Resource.js';
 import PYQ from '../models/PYQ.js';
-import cloudinary from '../config/cloudinary.js';
 import { deleteStorageAsset } from '../lib/storageService.js';
-
-/**
- * Attempts to destroy a Cloudinary asset, trying 'image' first (new uploads),
- * then 'raw' (legacy uploads), then 'raw' without .pdf extension.
- */
-const destroyCloudinaryAsset = async (publicId) => {
-  if (!publicId) return;
-  try {
-    // New uploads: resource_type 'image'
-    let result = await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
-    if (result.result === 'ok') return;
-
-    // Legacy uploads: resource_type 'raw'
-    result = await cloudinary.uploader.destroy(publicId, { resource_type: 'raw' });
-    if (result.result === 'ok') return;
-
-    // Older legacy: raw without .pdf extension
-    if (publicId.endsWith('.pdf')) {
-      await cloudinary.uploader.destroy(publicId.slice(0, -4), { resource_type: 'raw' });
-    }
-  } catch (err) {
-    console.error(`[CRON] Cloudinary destroy failed for ${publicId}:`, err.message);
-  }
-};
 
 export const cleanupSoftDeletedRecords = async () => {
   console.log('[CRON] Starting daily cleanup of soft-deleted records...');
@@ -58,9 +30,6 @@ export const cleanupSoftDeletedRecords = async () => {
       if (resource.storageKey) {
         await deleteStorageAsset(resource.storageKey, resource.thumbnailKey);
       }
-      if (resource.cloudinaryPublicId) {
-        await destroyCloudinaryAsset(resource.cloudinaryPublicId);
-      }
       await Resource.deleteOne({ _id: resource._id });
       resourceCount++;
     }
@@ -76,9 +45,6 @@ export const cleanupSoftDeletedRecords = async () => {
     for (const pyq of deletedPYQs) {
       if (pyq.storageKey) {
         await deleteStorageAsset(pyq.storageKey, pyq.thumbnailKey);
-      }
-      if (pyq.cloudinaryPublicId) {
-        await destroyCloudinaryAsset(pyq.cloudinaryPublicId);
       }
       await PYQ.deleteOne({ _id: pyq._id });
       pyqCount++;

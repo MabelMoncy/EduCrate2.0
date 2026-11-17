@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import {
   getResources,
   getResourceFileUrl,
+  streamResourceFile,
   uploadResource,
   deleteResource,
   updateResourcePin,
@@ -15,7 +16,7 @@ import { protectStudent } from '../middlewares/protectStudent.js';
 import upload from '../middlewares/uploadMiddleware.js';
 import { cacheMiddleware } from '../lib/cache.js';
 
-import { uploadPYQ, listPYQs, deletePYQ, getPYQViewUrl, getPendingPYQs, getMyPYQUploads, approvePYQ, rejectPYQ } from '../controllers/pyqController.js';
+import { uploadPYQ, listPYQs, deletePYQ, getPYQViewUrl, streamPYQFile, getPendingPYQs, getMyPYQUploads, approvePYQ, rejectPYQ } from '../controllers/pyqController.js';
 import { getMyNotifications, markNotificationRead } from '../controllers/notificationController.js';
 import { triggerCleanup } from '../controllers/cronController.js';
 
@@ -69,6 +70,7 @@ router.route('/resources/:id')
 
 router.patch('/resources/:id/pin', protectAdmin, updateResourcePin);
 router.get('/resources/:id/file-url', protectAdminOrUser, getResourceFileUrl); // signed file URLs require authentication
+router.get('/resources/:id/stream', protectAdminOrUser, streamResourceFile);
 router.get('/storage/thumbnail', getThumbnail); // cached public thumbnails
 
 const pyqCache = cacheMiddleware(300);
@@ -83,6 +85,7 @@ router.patch('/pyq/:id/approve', protectAdmin, approvePYQ);
 router.patch('/pyq/:id/reject', protectAdmin, rejectPYQ);
 router.delete('/pyq/:id', protectAdminOrUser, deletePYQ);
 router.get('/pyq/:id/view-url', protectAdminOrUser, getPYQViewUrl);
+router.get('/pyq/:id/stream', protectAdminOrUser, streamPYQFile);
 
 // ── Library Routes (Bookmarks / Uploads / PYQs) ────────────────────────────
 import { toggleBookmark, getMyBookmarks, getMyUploads } from '../controllers/resourceController.js';

@@ -1,12 +1,12 @@
+import { pipeline } from 'node:stream';
 import PYQ from '../models/PYQ.js';
 import Notification from '../models/Notification.js';
-import cloudinary from '../config/cloudinary.js';
 import { validatePdfMagicBytes } from '../middlewares/uploadMiddleware.js';
 import { scanBuffer } from '../lib/virusScanner.js';
-import { uploadToCloudinary } from '../lib/cloudinaryUtils.js';
 import {
   uploadPdfWithThumbnail,
   getSignedDownloadUrl,
+  getFileObject,
 } from '../lib/storageService.js';
 import { clearCache } from '../lib/cache.js';
 
@@ -60,23 +60,13 @@ export const uploadPYQ = async (req, res, next) => {
     const folder = `educrate/pyq/${semester}/${year}/${safeSubject}`;
     const publicId = `${Date.now()}_${safeName}`;
 
-    let b2 = null;
-    let secure_url;
-    let cloudinaryPublicId = null;
-
-    if (process.env.B2_APPLICATION_KEY) {
-      try {
-        b2 = await uploadPdfWithThumbnail(file.buffer, folder, publicId);
-        secure_url = b2.fileUrl;
-      } catch (b2Err) {
-        console.error('[Backblaze B2] PYQ upload error:', b2Err);
-        res.status(500);
-        throw new Error('File upload to storage failed. Please try again.');
-      }
-    } else {
-      const uploadResult = await uploadToCloudinary(file.buffer, folder, publicId);
-      secure_url = uploadResult.secure_url;
-      cloudinaryPublicId = uploadResult.public_id;
+    let b2;
+    try {
+      b2 = await uploadPdfWithThumbnail(file.buffer, folder, publicId);
+    } catch (b2Err) {
+      console.error('[Backblaze B2] PYQ upload error:', b2Err);
+      res.status(500);
+      throw new Error('File upload to storage failed. Please try again.');
     }
 
     const isAdmin = !!req.user;
@@ -90,11 +80,10 @@ export const uploadPYQ = async (req, res, next) => {
       semester,
       subject,
       year: parseInt(year, 10),
-      storageKey: b2?.storageKey,
-      thumbnailKey: b2?.thumbnailKey,
-      thumbnailUrl: b2?.thumbnailUrl,
-      cloudinaryPublicId,
-      fileUrl: secure_url,
+      storageKey: b2.storageKey,
+      thumbnailKey: b2.thumbnailKey,
+      thumbnailUrl: b2.thumbnailUrl,
+      fileUrl: b2.fileUrl,
       fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
       uploadedBy: uid,
       uploadedByRole: role,
@@ -135,13 +124,7 @@ export const listPYQs = async (req, res, next) => {
 
     const pyqsWithThumbnails = pyqs.map(doc => {
       const pyq = doc.toObject();
-      if (pyq.fileUrl) {
-        pyq.thumbnailUrl = pyq.fileUrl
-          .replace('/image/upload/', '/image/upload/w_400,h_300,c_fill,g_north,pg_1/')
-          .replace(/\.pdf$/i, '.jpg');
-      }
       delete pyq.fileUrl;
-      delete pyq.cloudinaryPublicId;
       return pyq;
     });
 
@@ -181,7 +164,7 @@ export const deletePYQ = async (req, res, next) => {
     }
 
     // Soft delete: mark as deleted so it disappears from the frontend immediately.
-    // The CRON job in cron/cleanup.js handles physical Cloudinary + MongoDB removal
+    // The CRON job in cron/cleanup.js handles physical storage + MongoDB removal
     // after a 24-hour grace period.
     pyq.isDeleted = true;
     await pyq.save();
@@ -194,39 +177,72 @@ export const deletePYQ = async (req, res, next) => {
   }
 };
 
-// @desc    Get a signed Cloudinary URL for a PYQ (No download)
+// @desc    Get a signed Backblaze B2 URL for a PYQ
 // @route   GET /api/pyq/:id/view-url
 // @access  Authenticated User
 export const getPYQViewUrl = async (req, res, next) => {
   try {
     const pyqId = req.params.id;
 
-    // We no longer check purchase status, but require authentication (handled by middleware)
-
     const pyq = await PYQ.findById(pyqId);
-    if (!pyq || (!pyq.storageKey && !pyq.cloudinaryPublicId)) {
+    if (!pyq || (!pyq.storageKey && !pyq.fileUrl)) {
       res.status(404);
       throw new Error('PYQ not found or missing file reference');
     }
 
+    const attachment = req.query.attachment === 'true';
     const expiresAt = Math.floor(Date.now() / 1000) + (10 * 60); // 10 minutes TTL
-    let url;
-    if (pyq.storageKey) {
-      url = await getSignedDownloadUrl(pyq.storageKey, 10 * 60);
-    } else {
-      url = cloudinary.utils.private_download_url(
-        pyq.cloudinaryPublicId,
-        'pdf',
-        {
-          resource_type: 'image',
-          type: 'upload',
-          expires_at: expiresAt,
-          // intentionally NOT passing attachment:true
-        }
-      );
-    }
+    const url = pyq.storageKey
+      ? await getSignedDownloadUrl(pyq.storageKey, 10 * 60, { attachment })
+      : pyq.fileUrl;
 
     res.json({ url, expiresAt });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Stream a PYQ PDF file directly
+// @route   GET /api/pyq/:id/stream
+// @access  Authenticated User
+export const streamPYQFile = async (req, res, next) => {
+  try {
+    const pyqId = req.params.id;
+
+    const pyq = await PYQ.findById(pyqId);
+    if (!pyq) {
+      res.status(404);
+      throw new Error('PYQ not found');
+    }
+
+    if (!pyq.storageKey) {
+      if (pyq.fileUrl) {
+        return res.redirect(pyq.fileUrl);
+      }
+      res.status(404);
+      throw new Error('Missing file reference');
+    }
+
+    const { stream, contentType, contentLength } = await getFileObject(pyq.storageKey);
+
+    if (res.destroyed || res.writableEnded) {
+      if (typeof stream?.destroy === 'function') stream.destroy();
+      return;
+    }
+
+    res.setHeader('Content-Type', contentType || 'application/pdf');
+    res.setHeader('Content-Disposition', 'inline');
+    if (contentLength) res.setHeader('Content-Length', contentLength);
+
+    pipeline(stream, res, (err) => {
+      if (err) {
+        if (!res.headersSent) {
+          next(err);
+        } else {
+          res.destroy();
+        }
+      }
+    });
   } catch (error) {
     next(error);
   }

@@ -1,6 +1,6 @@
 import multer from 'multer';
 
-// Use memory storage — the file buffer is piped directly to Cloudinary upload_stream.
+// Use memory storage — the file buffer is passed directly to the storage service.
 // No temporary files are written to disk.
 const storage = multer.memoryStorage();
 
