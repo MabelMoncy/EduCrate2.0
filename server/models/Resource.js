@@ -23,12 +23,22 @@ const resourceSchema = mongoose.Schema(
       enum:    ['notes', 'pyq'],
       default: 'notes',
     },
-    // Public HTTPS URL returned by Cloudinary (secure_url)
+    // Public HTTPS URL returned by Cloudinary or Backblaze B2
     fileUrl: {
       type:     String,
       required: true,
     },
-    // Cloudinary public_id — stored to enable clean asset deletion
+    // Backblaze B2 object keys
+    storageKey: {
+      type: String,
+    },
+    thumbnailKey: {
+      type: String,
+    },
+    thumbnailUrl: {
+      type: String,
+    },
+    // Legacy Cloudinary public_id — stored to enable clean asset deletion
     cloudinaryPublicId: {
       type: String,
     },

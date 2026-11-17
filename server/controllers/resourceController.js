@@ -6,6 +6,11 @@ import { validatePdfMagicBytes } from '../middlewares/uploadMiddleware.js';
 import { scanBuffer } from '../lib/virusScanner.js';
 import { createRequire } from 'node:module';
 import { uploadToCloudinary } from '../lib/cloudinaryUtils.js';
+import {
+  uploadPdfWithThumbnail,
+  getSignedDownloadUrl,
+  getThumbnailObject,
+} from '../lib/storageService.js';
 const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse');
 import { clearCache } from '../lib/cache.js';
@@ -270,27 +275,32 @@ const getResourceFileUrl = async (req, res, next) => {
       throw new Error('Resource not found');
     }
 
-    if (!resource.cloudinaryPublicId) {
+    if (!resource.storageKey && !resource.cloudinaryPublicId) {
       res.status(400);
-      throw new Error('Missing Cloudinary file reference');
+      throw new Error('Missing file reference');
     }
 
     const attachment = req.query.attachment === 'true';
     const expiresAt = Math.floor(Date.now() / 1000) + (10 * 60);
 
-    // Legacy notes were uploaded as 'raw', newer ones as 'image'
-    const rType = resource.fileUrl && resource.fileUrl.includes('/image/upload/') ? 'image' : 'raw';
+    let url;
+    if (resource.storageKey) {
+      url = await getSignedDownloadUrl(resource.storageKey, 10 * 60);
+    } else {
+      // Legacy notes were uploaded as 'raw', newer ones as 'image'
+      const rType = resource.fileUrl && resource.fileUrl.includes('/image/upload/') ? 'image' : 'raw';
 
-    const url = cloudinary.utils.private_download_url(
-      resource.cloudinaryPublicId,
-      'pdf',
-      {
-        resource_type: rType,
-        type: 'upload',
-        ...(attachment ? { attachment: true } : {}),
-        expires_at: expiresAt,
-      }
-    );
+      url = cloudinary.utils.private_download_url(
+        resource.cloudinaryPublicId,
+        'pdf',
+        {
+          resource_type: rType,
+          type: 'upload',
+          ...(attachment ? { attachment: true } : {}),
+          expires_at: expiresAt,
+        }
+      );
+    }
 
     res.json({ url, expiresAt });
   } catch (error) {
@@ -409,18 +419,33 @@ const uploadResource = async (req, res, next) => {
     const folder = `educrate/${semester}/${type}/${safeSubject}`;
     const publicId = `${Date.now()}_${safeName}`;
 
-    // ── 8. Upload buffer to Cloudinary ────────────────────────────────────────
-    let uploadResult;
-    try {
-      uploadResult = await uploadToCloudinary(file.buffer, folder, publicId);
-    } catch (cloudErr) {
-      // M21 — log full Cloudinary error internally, never expose it to clients
-      console.error('[Cloudinary] Upload error:', cloudErr);
-      res.status(500);
-      throw new Error('File upload failed. Please try again.');
-    }
+    // ── 8. Upload buffer to Backblaze B2 (with Cloudinary fallback) ───────────
+    let b2 = null;
+    let secure_url;
+    let cloudinaryPublicId = null;
 
-    const { secure_url, public_id: cloudinaryPublicId } = uploadResult;
+    if (process.env.B2_APPLICATION_KEY) {
+      try {
+        b2 = await uploadPdfWithThumbnail(file.buffer, folder, publicId);
+        secure_url = b2.fileUrl;
+      } catch (b2Err) {
+        console.error('[Backblaze B2] Upload error:', b2Err);
+        res.status(500);
+        throw new Error('File upload to storage failed. Please try again.');
+      }
+    } else {
+      let uploadResult;
+      try {
+        uploadResult = await uploadToCloudinary(file.buffer, folder, publicId);
+        secure_url = uploadResult.secure_url;
+        cloudinaryPublicId = uploadResult.public_id;
+      } catch (cloudErr) {
+        // M21 — log full Cloudinary error internally, never expose it to clients
+        console.error('[Cloudinary] Upload error:', cloudErr);
+        res.status(500);
+        throw new Error('File upload failed. Please try again.');
+      }
+    }
 
     // ── 9. Persist metadata in MongoDB ───────────────────────────────────────
     const resource = await Resource.create({
@@ -431,6 +456,9 @@ const uploadResource = async (req, res, next) => {
       subject,
       type,
       fileUrl: secure_url,
+      storageKey: b2?.storageKey,
+      thumbnailKey: b2?.thumbnailKey,
+      thumbnailUrl: b2?.thumbnailUrl,
       cloudinaryPublicId, // stored for clean deletes
       fileType: 'pdf',
       fileSize: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
@@ -579,6 +607,29 @@ const getMyUploads = async (req, res, next) => {
   }
 };
 
+// ── @desc    Stream cached WebP thumbnail for a resource                     ────
+// ── @route   GET /api/storage/thumbnail?key=...                             ────
+// ── @access  Public                                                         ────
+const getThumbnail = async (req, res, next) => {
+  try {
+    const key = req.query.key;
+    if (!key || typeof key !== 'string' || !key.startsWith('educrate/') || !key.endsWith('.webp')) {
+      res.status(400);
+      throw new Error('Invalid thumbnail key');
+    }
+
+    const { stream, contentType } = await getThumbnailObject(key);
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+    stream.pipe(res);
+  } catch (error) {
+    if (error.name === 'NoSuchKey' || error.$metadata?.httpStatusCode === 404) {
+      return res.status(404).json({ message: 'Thumbnail not found' });
+    }
+    next(error);
+  }
+};
+
 export {
   buildResourceQuery,
   getResources,
@@ -589,5 +640,6 @@ export {
   toggleBookmark,
   getMyBookmarks,
   getMyUploads,
+  getThumbnail,
 };
 

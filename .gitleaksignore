@@ -1,3 +1,5 @@
 4ee8dfad232d77affb6eabe166cdcc0ec022031f:tests/helpers/testEnv.js:generic-api-key:14
 4ee8dfad232d77affb6eabe166cdcc0ec022031f:tests/fixtures/testTokens.js:jwt:40
 4ee8dfad232d77affb6eabe166cdcc0ec022031f:tests/fixtures/testTokens.js:jwt:42
+fe99d2641d5e61092539a86007a6e61d272c0a2b:server/controllers/pyqController.js:generic-api-key:73
+fe99d2641d5e61092539a86007a6e61d272c0a2b:server/controllers/resourceController.js:generic-api-key:433

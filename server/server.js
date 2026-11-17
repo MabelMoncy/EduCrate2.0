@@ -46,12 +46,12 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
+      scriptSrc: ["'self'", 'https://apis.google.com'],
       styleSrc: ["'self'", "'unsafe-inline'"],
       fontSrc: ["'self'"],
-      imgSrc: ["'self'", 'data:', 'https://res.cloudinary.com'],
-      connectSrc: ["'self'"],
-      frameSrc: ["'none'"],
+      imgSrc: ["'self'", 'data:', 'https://res.cloudinary.com', 'https://*.backblazeb2.com', 'https://*.googleusercontent.com'],
+      connectSrc: ["'self'", 'https://*.googleapis.com', 'https://*.firebaseio.com', 'https://*.backblazeb2.com'],
+      frameSrc: ["'self'", 'https://*.firebaseapp.com', 'https://accounts.google.com'],
       objectSrc: ["'none'"],
       upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
     },

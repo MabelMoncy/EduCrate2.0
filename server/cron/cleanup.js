@@ -16,6 +16,7 @@ import cron from 'node-cron';
 import Resource from '../models/Resource.js';
 import PYQ from '../models/PYQ.js';
 import cloudinary from '../config/cloudinary.js';
+import { deleteStorageAsset } from '../lib/storageService.js';
 
 /**
  * Attempts to destroy a Cloudinary asset, trying 'image' first (new uploads),
@@ -54,7 +55,12 @@ export const cleanupSoftDeletedRecords = async () => {
 
     let resourceCount = 0;
     for (const resource of deletedResources) {
-      await destroyCloudinaryAsset(resource.cloudinaryPublicId);
+      if (resource.storageKey) {
+        await deleteStorageAsset(resource.storageKey, resource.thumbnailKey);
+      }
+      if (resource.cloudinaryPublicId) {
+        await destroyCloudinaryAsset(resource.cloudinaryPublicId);
+      }
       await Resource.deleteOne({ _id: resource._id });
       resourceCount++;
     }
@@ -68,7 +74,12 @@ export const cleanupSoftDeletedRecords = async () => {
 
     let pyqCount = 0;
     for (const pyq of deletedPYQs) {
-      await destroyCloudinaryAsset(pyq.cloudinaryPublicId);
+      if (pyq.storageKey) {
+        await deleteStorageAsset(pyq.storageKey, pyq.thumbnailKey);
+      }
+      if (pyq.cloudinaryPublicId) {
+        await destroyCloudinaryAsset(pyq.cloudinaryPublicId);
+      }
       await PYQ.deleteOne({ _id: pyq._id });
       pyqCount++;
     }

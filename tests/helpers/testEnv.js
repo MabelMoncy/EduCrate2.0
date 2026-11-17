@@ -16,6 +16,11 @@ export const setupTestEnv = (overrides = {}) => {
   process.env.TRUST_PROXY = 'false';
   process.env.NODE_CLAMSCAN_ENABLED = 'false';
   process.env.MONGODB_URI = process.env.TEST_MONGODB_URI || 'mongodb://127.0.0.1:27017/educrate_test';
+  process.env.B2_KEY_ID = process.env.B2_KEY_ID || 'test-b2-key-id';
+  process.env.B2_APPLICATION_KEY = process.env.B2_APPLICATION_KEY || 'test-b2-application-key';
+  process.env.B2_ENDPOINT = process.env.B2_ENDPOINT || 'https://s3.eu-central-003.backblazeb2.com';
+  process.env.B2_REGION = process.env.B2_REGION || 'eu-central-003';
+  process.env.B2_BUCKET_NAME = process.env.B2_BUCKET_NAME || 'educrate-storage-test';
 
   Object.assign(process.env, overrides);
 };
