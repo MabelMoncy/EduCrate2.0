@@ -64,7 +64,7 @@ export async function generatePdfThumbnail(pdfBuffer, maxWidth = 400) {
  * @returns {Promise<{ storageKey: string, fileUrl: string, thumbnailKey: string|null, thumbnailUrl: string|null }>}
  */
 export async function uploadPdfWithThumbnail(buffer, folder, fileId) {
-  const sanitizedFolder = folder.replace(/^\/+|\/+$/g, '');
+  const sanitizedFolder = folder.split('/').filter(Boolean).join('/');
   const storageKey = `${sanitizedFolder}/${fileId}.pdf`;
   const thumbnailKey = `${sanitizedFolder}/thumbnails/${fileId}.webp`;
 
