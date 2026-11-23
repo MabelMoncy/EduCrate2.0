@@ -31,7 +31,12 @@ export const protectStudent = async (req, res, next) => {
     const token = getBearerToken(req);
     const decodedToken = await admin.auth().verifyIdToken(token, true);
 
-    if (requireVerifiedEmail() && decodedToken.email && decodedToken.email_verified !== true) {
+    if (!decodedToken.email) {
+      res.status(401);
+      throw new Error('An email address is required to access your student profile.');
+    }
+
+    if (requireVerifiedEmail() && decodedToken.email_verified !== true) {
       res.status(403);
       throw new Error('Please verify your email before accessing your student profile.');
     }
@@ -39,7 +44,7 @@ export const protectStudent = async (req, res, next) => {
     // Find or create student
     let student = await Student.findOne({ firebaseUid: decodedToken.uid });
 
-    if (!student && decodedToken.email && decodedToken.email_verified === true) {
+    if (!student && decodedToken.email_verified === true) {
       // Fallback: Check if student exists by email (happens if Firebase user was deleted and re-created)
       student = await Student.findOne({ email: decodedToken.email });
       if (student) {
@@ -64,6 +69,7 @@ export const protectStudent = async (req, res, next) => {
     if (res.statusCode === 200) res.status(error.statusCode || 401);
     next(
       error.message.includes('verify your email') ||
+      error.message.includes('email address is required') ||
       error.message.includes('Authentication required') ||
       error.message.includes('Firebase Admin SDK is not initialized')
         ? error

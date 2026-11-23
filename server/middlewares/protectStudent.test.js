@@ -92,6 +92,30 @@ describe('protectStudent middleware — Security & AuthN/AuthZ', () => {
     assert.match(nextError.message, /Not authorized, token failed/i);
   });
 
+  it('should return 401 if token has no email (e.g. anonymous or phone auth)', async () => {
+    const authStub = {
+      verifyIdToken: async () => ({
+        uid: 'anonymous-uid-123',
+        // No email property
+      }),
+    };
+    admin.auth = () => authStub;
+
+    const req = { headers: { authorization: 'Bearer anonymous-token' } };
+    let statusCode = 200;
+    let nextError = null;
+    const res = {
+      status(code) { statusCode = code; return this; },
+      get statusCode() { return statusCode; },
+    };
+
+    await protectStudent(req, res, (err) => { nextError = err; });
+
+    assert.equal(statusCode, 401);
+    assert.ok(nextError instanceof Error);
+    assert.match(nextError.message, /email address is required/i);
+  });
+
   it('should return 403 if email is not verified and FIREBASE_REQUIRE_VERIFIED_EMAIL is active', async () => {
     const authStub = {
       verifyIdToken: async () => ({
