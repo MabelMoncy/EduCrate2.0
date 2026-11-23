@@ -73,7 +73,7 @@ describe('protectStudent middleware — Security & AuthN/AuthZ', () => {
 
     assert.equal(statusCode, 401);
     assert.ok(nextError instanceof Error);
-    assert.match(nextError.message, /Authentication required/i);
+    assert.match(nextError.message, /Not authorized, token failed/i);
   });
 
   it('should return 401 if Authorization header does not start with Bearer', async () => {
@@ -89,7 +89,7 @@ describe('protectStudent middleware — Security & AuthN/AuthZ', () => {
 
     assert.equal(statusCode, 401);
     assert.ok(nextError instanceof Error);
-    assert.match(nextError.message, /Authentication required/i);
+    assert.match(nextError.message, /Not authorized, token failed/i);
   });
 
   it('should return 403 if email is not verified and FIREBASE_REQUIRE_VERIFIED_EMAIL is active', async () => {

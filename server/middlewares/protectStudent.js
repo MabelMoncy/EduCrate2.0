@@ -13,6 +13,14 @@ const getBearerToken = (req) => {
 
 const requireVerifiedEmail = () => process.env.FIREBASE_REQUIRE_VERIFIED_EMAIL !== 'false';
 
+/**
+ * protectStudent middleware
+ *
+ * Verifies Firebase ID token and provisions / links student profile in MongoDB.
+ * Enforces email verification before granting access or performing fallback account linking.
+ * If unverified, returns HTTP 403. The frontend (AuthContext) captures this 403,
+ * sets emailVerificationRequired, and guides the student to verify and refresh.
+ */
 export const protectStudent = async (req, res, next) => {
   try {
     if (!isFirebaseAdminReady()) {
@@ -21,11 +29,6 @@ export const protectStudent = async (req, res, next) => {
     }
 
     const token = getBearerToken(req);
-    if (!token) {
-      res.status(401);
-      throw new Error('Authentication required. Please sign in to continue.');
-    }
-
     const decodedToken = await admin.auth().verifyIdToken(token, true);
 
     if (requireVerifiedEmail() && decodedToken.email && decodedToken.email_verified !== true) {

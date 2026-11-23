@@ -14,7 +14,16 @@ import axios from 'axios';
 
 export default function Account() {
   const navigate = useNavigate();
-  const { user, firebaseUser, studentData, logout, setStudentData } = useAuth();
+  const {
+    user,
+    firebaseUser,
+    studentData,
+    logout,
+    setStudentData,
+    emailVerificationRequired,
+    sendVerificationEmail,
+    refreshSession,
+  } = useAuth();
   
   const [activeTab, setActiveTab] = useState('overview'); // overview, pyqs, notes, saved
   
@@ -159,6 +168,48 @@ export default function Account() {
     <Layout>
       <div className="max-w-5xl mx-auto pb-20">
         
+        {emailVerificationRequired && (
+          <div className="mb-6 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <p className="font-semibold text-sm text-white">Email verification required</p>
+              <p className="text-xs text-amber-200/80">
+                Please verify your email address to access your student profile, bookmarks, and uploads.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await sendVerificationEmail();
+                    alert('Verification email sent! Please check your inbox.');
+                  } catch (_e) {
+                    alert('Could not send verification email. Please try again later.');
+                  }
+                }}
+                className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-xs font-semibold transition-colors"
+              >
+                Resend Email
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const updated = await refreshSession();
+                  if (updated) {
+                    alert('Email verified successfully!');
+                    fetchAllData();
+                  } else {
+                    alert('Email is not yet verified. Please click the link in your verification email first.');
+                  }
+                }}
+                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors"
+              >
+                I&apos;ve Verified
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* PREMIUM PROFILE HERO */}
         <div className="relative rounded-3xl bg-surface border border-white/10 overflow-hidden mb-8 shadow-2xl">
           {/* Gradient Banner */}
