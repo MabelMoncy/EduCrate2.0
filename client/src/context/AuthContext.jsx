@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   onAuthStateChanged,
+  sendEmailVerification,
   signInWithPopup,
   signOut,
 } from 'firebase/auth';
@@ -29,6 +30,7 @@ export const AuthProvider = ({ children }) => {
   const [auth, setAuth] = useState(() => readStoredAuth());
   const [firebaseUser, setFirebaseUser] = useState(null);
   const [studentData, setStudentData] = useState(null);
+  const [emailVerificationRequired, setEmailVerificationRequired] = useState(false);
   const [firebaseLoading, setFirebaseLoading] = useState(isFirebaseConfigured);
   const [signInPrompt, setSignInPrompt] = useState({
     isOpen: false,
@@ -59,12 +61,19 @@ export const AuthProvider = ({ children }) => {
           if (response.ok) {
             const data = await response.json();
             setStudentData(data);
+            setEmailVerificationRequired(false);
+          } else if (response.status === 403) {
+            const errData = await response.json().catch(() => ({}));
+            if (errData.message?.includes('verify your email')) {
+              setEmailVerificationRequired(true);
+            }
           }
         } catch (err) {
           console.error('Failed to fetch student profile:', err);
         }
       } else {
         setStudentData(null);
+        setEmailVerificationRequired(false);
       }
       setFirebaseLoading(false);
     });
@@ -132,11 +141,34 @@ export const AuthProvider = ({ children }) => {
     return result;
   }, [closeSignInPrompt, signInPrompt.afterSignIn]);
 
+  const sendVerificationEmail = useCallback(async () => {
+    if (firebaseAuth?.currentUser) {
+      await sendEmailVerification(firebaseAuth.currentUser);
+    }
+  }, []);
+
+  const refreshSession = useCallback(async () => {
+    if (!firebaseAuth?.currentUser) return null;
+    await firebaseAuth.currentUser.reload();
+    const token = await firebaseAuth.currentUser.getIdToken(true);
+    const response = await fetch('/api/students/me', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (response.ok) {
+      const data = await response.json();
+      setStudentData(data);
+      setEmailVerificationRequired(false);
+      return data;
+    }
+    return null;
+  }, []);
+
   const value = useMemo(() => ({
     user: auth?.user || null,
     isAdmin: auth?.user?.role === 'admin',
     firebaseUser,
     studentData,
+    emailVerificationRequired,
     firebaseLoading,
     isFirebaseConfigured,
     isSignedIn: !!auth?.user || !!firebaseUser,
@@ -146,7 +178,20 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     signInWithGoogle,
-  }), [auth, closeSignInPrompt, firebaseLoading, firebaseUser, studentData, signInPrompt, signInWithGoogle]);
+    sendVerificationEmail,
+    refreshSession,
+  }), [
+    auth,
+    closeSignInPrompt,
+    emailVerificationRequired,
+    firebaseLoading,
+    firebaseUser,
+    studentData,
+    signInPrompt,
+    signInWithGoogle,
+    sendVerificationEmail,
+    refreshSession,
+  ]);
 
   return (
     <AuthContext.Provider value={value}>
