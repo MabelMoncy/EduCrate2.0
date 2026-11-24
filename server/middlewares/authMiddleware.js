@@ -21,7 +21,7 @@ const protectAdmin = async (req, res, next) => {
     }
 
     // JTI revocation check — rejects tokens that have been explicitly logged out (H3)
-    if (decoded.jti && tokenBlacklist.has(decoded.jti)) {
+    if (decoded.jti && (await tokenBlacklist.has(decoded.jti))) {
       res.status(401);
       throw new Error('Token has been revoked');
     }

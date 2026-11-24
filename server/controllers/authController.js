@@ -89,7 +89,7 @@ const loginAdmin = async (req, res, next) => {
   }
 };
 
-const logoutAdmin = (req, res, next) => {
+const logoutAdmin = async (req, res, next) => {
   try {
     const token = req.cookies?.educrate_token;
     if (token) {
@@ -97,7 +97,8 @@ const logoutAdmin = (req, res, next) => {
         // Decode without verify — we're logging out, token may be expired
         const decoded = jwt.decode(token);
         if (decoded?.jti) {
-          tokenBlacklist.add(decoded.jti);
+          const expiresAt = decoded.exp ? new Date(decoded.exp * 1000) : undefined;
+          await tokenBlacklist.add(decoded.jti, expiresAt);
         }
       } catch (_decodeErr) {
         // If decode fails, still clear cookies
