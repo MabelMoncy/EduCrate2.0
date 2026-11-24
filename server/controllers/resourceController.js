@@ -183,13 +183,13 @@ const stripHtml = (str) => {
 
 const buildResourceQuery = ({ semester, isPinned, subject, type, search } = {}) => {
   const query = {};
-  if (semester) query.semester = semester;
-  if (subject) query.subject = subject;
-  if (type) query.type = type;
+  if (typeof semester === 'string' && semester.trim()) query.semester = semester.trim();
+  if (typeof subject === 'string' && subject.trim()) query.subject = { $eq: subject.trim() };
+  if (typeof type === 'string' && type.trim()) query.type = type.trim();
   // M15 — only accept the exact string 'true' or boolean true; ignore operator-injection attempts
   if (isPinned === 'true' || isPinned === true) query.isPinned = true;
 
-  if (search && search.trim()) {
+  if (typeof search === 'string' && search.trim()) {
     // M13 — enforce length cap before constructing any RegExp object
     const raw = search.trim().substring(0, SEARCH_MAX_LENGTH);
     const term = escapeRegex(raw);
@@ -656,4 +656,3 @@ export {
   getThumbnail,
   streamResourceFile,
 };
-

@@ -4,13 +4,13 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
-import expressMongoSanitize from 'express-mongo-sanitize';
 import cookieParser from 'cookie-parser';
 import connectDB from './config/db.js';
 import apiRoutes from './routes/apiRoutes.js';
 import { notFound, errorHandler } from './middlewares/errorMiddleware.js';
 import { csrfMiddleware } from './middlewares/csrfMiddleware.js';
 import { requireJsonContentType } from './middlewares/contentTypeMiddleware.js';
+import { mongoSanitize } from './middlewares/mongoSanitizeMiddleware.js';
 import { initFirebaseAdmin, isFirebaseAdminReady } from './lib/firebaseAdmin.js';
 import { initCronJobs } from './cron/cleanup.js';
 import path from 'path';
@@ -101,12 +101,7 @@ app.use(
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// Prevent NoSQL injection — custom wrapper for Express 5 compatibility (req.query is a read-only getter in Express 5)
-const mongoSanitize = () => (req, _res, next) => {
-  if (req.body) expressMongoSanitize.sanitize(req.body, { allowDots: false });
-  if (req.params) expressMongoSanitize.sanitize(req.params, { allowDots: false });
-  next();
-};
+// Prevent NoSQL injection
 app.use(mongoSanitize());
 
 // L32 — reject non-JSON Content-Type on state-changing endpoints (multipart uploads are exempt)
