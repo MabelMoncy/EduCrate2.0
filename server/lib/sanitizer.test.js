@@ -55,5 +55,20 @@ describe('stripHtml — Sanitizer Utility', () => {
     assert.ok(!result.includes('<b>'));
     assert.ok(!result.includes('</b>'));
   });
+
+  it('regression: should not return residual complete markup or event-handlers when pass limit is reached', () => {
+    // 15 layers of nested tags surrounding an event-handler tag designed to exceed 10 passes
+    let deeplyNested = '<img src=x onerror=alert(1)>';
+    for (let i = 0; i < 15; i++) {
+      deeplyNested = '<div>' + deeplyNested + '</div>';
+    }
+
+    const result = stripHtml(deeplyNested);
+    // Residual delimiters must be removed so no complete HTML tag can survive
+    assert.ok(!/<[^><]+>/.test(result), 'Must not contain any complete HTML tags');
+    assert.ok(!result.includes('<'), 'Must not contain opening angle bracket');
+    assert.ok(!result.includes('>'), 'Must not contain closing angle bracket');
+    assert.ok(!result.includes('<img'), 'Must not contain complete img tag');
+  });
 });
 

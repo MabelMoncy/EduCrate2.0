@@ -23,6 +23,13 @@ export const stripHtml = (str) => {
     sanitized = sanitized.replace(/<[^><]*>/g, '');
     passes++;
   } while (sanitized !== prev && passes < 10);
+
+  // If residual markup remains after reaching the pass limit, strip all remaining
+  // '<' and '>' delimiters so no complete tag or event-handler can survive.
+  if ((passes >= 10 && sanitized !== prev) || /<[^><]*>/.test(sanitized)) {
+    sanitized = sanitized.replace(/[<>]/g, '');
+  }
+
   return sanitized;
 };
 

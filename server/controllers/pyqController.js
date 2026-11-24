@@ -29,9 +29,23 @@ export const uploadPYQ = async (req, res, next) => {
       res.status(400);
       throw new Error('Please upload a PDF file');
     }
-    if (!title || !title.trim() || !semester || !subject || !year) {
+    if (
+      !title ||
+      typeof title !== 'string' ||
+      !title.trim() ||
+      !subject ||
+      typeof subject !== 'string' ||
+      !subject.trim() ||
+      !semester ||
+      !year
+    ) {
       res.status(400);
       throw new Error('Title, semester, subject, and year are required');
+    }
+    const parsedYear = parseInt(year, 10);
+    if (isNaN(parsedYear)) {
+      res.status(400);
+      throw new Error('Valid year is required');
     }
     if (!VALID_SEMESTERS.includes(semester)) {
       res.status(400);
@@ -62,7 +76,9 @@ export const uploadPYQ = async (req, res, next) => {
     const publicId = `${Date.now()}_${safeName}`;
 
     const cleanTitle = stripHtml(title.trim()).substring(0, 200);
-    const cleanDescription = description ? stripHtml(description.trim()).substring(0, 1000) : '';
+    const cleanDescription = typeof description === 'string' && description.trim()
+      ? stripHtml(description.trim()).substring(0, 1000)
+      : '';
 
     if (!cleanTitle.trim()) {
       res.status(400);
@@ -88,7 +104,7 @@ export const uploadPYQ = async (req, res, next) => {
       description: cleanDescription,
       semester,
       subject,
-      year: parseInt(year, 10),
+      year: parsedYear,
       storageKey: b2.storageKey,
       thumbnailKey: b2.thumbnailKey,
       thumbnailUrl: b2.thumbnailUrl,
@@ -300,13 +316,19 @@ export const approvePYQ = async (req, res, next) => {
     await pyq.save();
 
     if (pyq.uploadedByRole === 'student') {
-      await Notification.create({
-        studentFirebaseUid: pyq.uploadedBy,
-        type: 'approved',
-        contentType: 'pyq',
-        contentId: pyq._id,
-        contentTitle: stripHtml(pyq.title).substring(0, 200),
-      });
+      try {
+        const rawCleanTitle = stripHtml(pyq.title).trim().substring(0, 200);
+        const contentTitle = rawCleanTitle || (pyq.subject ? `${pyq.subject} PYQ` : 'Untitled PYQ');
+        await Notification.create({
+          studentFirebaseUid: pyq.uploadedBy,
+          type: 'approved',
+          contentType: 'pyq',
+          contentId: pyq._id,
+          contentTitle,
+        });
+      } catch (notifErr) {
+        console.error('[pyqController] Failed to dispatch approval notification:', notifErr);
+      }
     }
 
     clearCache('/pyq');
@@ -331,13 +353,19 @@ export const rejectPYQ = async (req, res, next) => {
     await pyq.save();
 
     if (pyq.uploadedByRole === 'student') {
-      await Notification.create({
-        studentFirebaseUid: pyq.uploadedBy,
-        type: 'rejected',
-        contentType: 'pyq',
-        contentId: pyq._id,
-        contentTitle: stripHtml(pyq.title).substring(0, 200),
-      });
+      try {
+        const rawCleanTitle = stripHtml(pyq.title).trim().substring(0, 200);
+        const contentTitle = rawCleanTitle || (pyq.subject ? `${pyq.subject} PYQ` : 'Untitled PYQ');
+        await Notification.create({
+          studentFirebaseUid: pyq.uploadedBy,
+          type: 'rejected',
+          contentType: 'pyq',
+          contentId: pyq._id,
+          contentTitle,
+        });
+      } catch (notifErr) {
+        console.error('[pyqController] Failed to dispatch rejection notification:', notifErr);
+      }
     }
 
     res.json({ message: 'PYQ rejected successfully' });
