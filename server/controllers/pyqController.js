@@ -1,6 +1,7 @@
 import { pipeline } from 'node:stream';
 import PYQ from '../models/PYQ.js';
 import Notification from '../models/Notification.js';
+import AuditLog from '../models/AuditLog.js';
 import { validatePdfMagicBytes } from '../middlewares/uploadMiddleware.js';
 import { scanBuffer } from '../lib/virusScanner.js';
 import {
@@ -181,12 +182,23 @@ export const deletePYQ = async (req, res, next) => {
     }
 
     // Auth check: Admin can delete any, user can only delete their own
-    if (!req.user) {
-      if (pyq.uploadedBy !== req.firebaseUser.uid) {
-        res.status(403);
-        throw new Error('Not authorized to delete this PYQ');
-      }
+    const isAdmin = !!req.user;
+    const isOwner = req.firebaseUser && pyq.uploadedBy === req.firebaseUser.uid;
+
+    if (!isAdmin && !isOwner) {
+      res.status(403);
+      throw new Error('Not authorized to delete this PYQ');
     }
+
+    // ── Audit log — record deletion before it executes ─────────────────────
+    await AuditLog.create({
+      action: 'DELETE',
+      resourceId: pyq._id,
+      resourceTitle: pyq.title?.trim() || (pyq.subject ? `${pyq.subject} PYQ` : 'Untitled PYQ'),
+      performedBy: isAdmin
+        ? String(req.user._id || req.user.id || 'admin')
+        : String(req.firebaseUser.uid),
+    });
 
     // Soft delete: mark as deleted so it disappears from the frontend immediately.
     // The CRON job in cron/cleanup.js handles physical storage + MongoDB removal
@@ -315,6 +327,13 @@ export const approvePYQ = async (req, res, next) => {
     pyq.status = 'published';
     await pyq.save();
 
+    await AuditLog.create({
+      action: 'APPROVE',
+      resourceId: pyq._id,
+      resourceTitle: pyq.title?.trim() || (pyq.subject ? `${pyq.subject} PYQ` : 'Untitled PYQ'),
+      performedBy: req.user?._id ? String(req.user._id) : (req.user?.id ? String(req.user.id) : 'admin'),
+    });
+
     if (pyq.uploadedByRole === 'student') {
       try {
         const rawCleanTitle = stripHtml(pyq.title).trim().substring(0, 200);
@@ -351,6 +370,13 @@ export const rejectPYQ = async (req, res, next) => {
 
     pyq.status = 'rejected';
     await pyq.save();
+
+    await AuditLog.create({
+      action: 'REJECT',
+      resourceId: pyq._id,
+      resourceTitle: pyq.title?.trim() || (pyq.subject ? `${pyq.subject} PYQ` : 'Untitled PYQ'),
+      performedBy: req.user?._id ? String(req.user._id) : (req.user?.id ? String(req.user.id) : 'admin'),
+    });
 
     if (pyq.uploadedByRole === 'student') {
       try {

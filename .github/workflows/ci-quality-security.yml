@@ -3,17 +3,17 @@ name: CI Quality & Security Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
   schedule:
     - cron: '17 2 * * 1'
   workflow_dispatch:
 
-# Cancel superseded runs on PR/feature branches, but never cancel runs on main.
+# Cancel superseded runs on PR/feature branches, but never cancel runs on main or develop.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
 permissions:
   contents: read

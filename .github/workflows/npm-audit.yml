@@ -8,7 +8,7 @@ on:
     - cron: '30 3 * * 1'
   workflow_dispatch:
   pull_request:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - 'package.json'
       - 'package-lock.json'
@@ -17,7 +17,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/develop' }}
 
 permissions:
   contents: read

@@ -2,26 +2,32 @@ import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import PYQ from '../models/PYQ.js';
 import Notification from '../models/Notification.js';
+import AuditLog from '../models/AuditLog.js';
 import { s3 } from '../config/s3.js';
-import { uploadPYQ, approvePYQ, rejectPYQ } from './pyqController.js';
+import { uploadPYQ, approvePYQ, rejectPYQ, deletePYQ } from './pyqController.js';
 
 describe('pyqController — Content Sanitization & Stored XSS Prevention', () => {
   let originalPYQCreate;
   let originalPYQFindById;
   let originalNotificationCreate;
+  let originalAuditLogCreate;
   let originalS3Send;
 
   beforeEach(() => {
     originalPYQCreate = PYQ.create;
     originalPYQFindById = PYQ.findById;
     originalNotificationCreate = Notification.create;
+    originalAuditLogCreate = AuditLog.create;
     originalS3Send = s3.send;
+    Notification.create = async () => ({});
+    AuditLog.create = async () => ({});
   });
 
   afterEach(() => {
     PYQ.create = originalPYQCreate;
     PYQ.findById = originalPYQFindById;
     Notification.create = originalNotificationCreate;
+    AuditLog.create = originalAuditLogCreate;
     s3.send = originalS3Send;
   });
 
@@ -503,6 +509,235 @@ describe('pyqController — Content Sanitization & Stored XSS Prevention', () =>
       assert.ok(createdNotification);
       assert.equal(createdNotification.contentTitle, 'Untitled PYQ');
       assert.equal(jsonResult.message, 'PYQ rejected successfully');
+    });
+  });
+
+  describe('pyqController — Audit Logging for Administrative Actions (Issue #146)', () => {
+    describe('deletePYQ', () => {
+      it('should create an AuditLog entry when an admin deletes a PYQ', async () => {
+        let createdAuditLog = null;
+        AuditLog.create = async (doc) => {
+          createdAuditLog = doc;
+          return doc;
+        };
+
+        let saved = false;
+        const mockPYQ = {
+          _id: '507f1f77bcf86cd799439011',
+          title: 'KTU S4 OS 2023 Solved',
+          uploadedBy: 'student-firebase-1',
+          isDeleted: false,
+          save: async () => { saved = true; },
+        };
+        PYQ.findById = async () => mockPYQ;
+
+        const req = {
+          params: { id: '507f1f77bcf86cd799439011' },
+          user: { _id: 'admin-mongo-id-123' },
+        };
+        let jsonResult = null;
+        const res = {
+          json(data) { jsonResult = data; return this; },
+        };
+
+        await deletePYQ(req, res, (err) => {
+          if (err) throw err;
+        });
+
+        assert.equal(saved, true);
+        assert.equal(mockPYQ.isDeleted, true);
+        assert.ok(createdAuditLog);
+        assert.equal(createdAuditLog.action, 'DELETE');
+        assert.equal(createdAuditLog.resourceId, '507f1f77bcf86cd799439011');
+        assert.equal(createdAuditLog.resourceTitle, 'KTU S4 OS 2023 Solved');
+        assert.equal(createdAuditLog.performedBy, 'admin-mongo-id-123');
+        assert.equal(jsonResult.message, 'PYQ moved to trash successfully');
+      });
+
+      it('should create an AuditLog entry when the owning student deletes their own PYQ', async () => {
+        let createdAuditLog = null;
+        AuditLog.create = async (doc) => {
+          createdAuditLog = doc;
+          return doc;
+        };
+
+        let saved = false;
+        const mockPYQ = {
+          _id: '507f1f77bcf86cd799439012',
+          title: 'KTU S3 DSA 2022',
+          uploadedBy: 'student-firebase-owner',
+          isDeleted: false,
+          save: async () => { saved = true; },
+        };
+        PYQ.findById = async () => mockPYQ;
+
+        const req = {
+          params: { id: '507f1f77bcf86cd799439012' },
+          user: null,
+          firebaseUser: { uid: 'student-firebase-owner' },
+        };
+        let jsonResult = null;
+        const res = {
+          json(data) { jsonResult = data; return this; },
+        };
+
+        await deletePYQ(req, res, (err) => {
+          if (err) throw err;
+        });
+
+        assert.equal(saved, true);
+        assert.equal(mockPYQ.isDeleted, true);
+        assert.ok(createdAuditLog);
+        assert.equal(createdAuditLog.action, 'DELETE');
+        assert.equal(createdAuditLog.resourceId, '507f1f77bcf86cd799439012');
+        assert.equal(createdAuditLog.resourceTitle, 'KTU S3 DSA 2022');
+        assert.equal(createdAuditLog.performedBy, 'student-firebase-owner');
+        assert.equal(jsonResult.message, 'PYQ moved to trash successfully');
+      });
+
+      it('should NOT create an AuditLog entry and reject with 403 when a non-owner student attempts deletion', async () => {
+        let auditLogCalled = false;
+        AuditLog.create = async () => {
+          auditLogCalled = true;
+        };
+
+        const mockPYQ = {
+          _id: '507f1f77bcf86cd799439013',
+          title: 'KTU S5 DBMS 2021',
+          uploadedBy: 'student-firebase-owner',
+          isDeleted: false,
+          save: async () => {},
+        };
+        PYQ.findById = async () => mockPYQ;
+
+        const req = {
+          params: { id: '507f1f77bcf86cd799439013' },
+          user: null,
+          firebaseUser: { uid: 'student-firebase-intruder' },
+        };
+        let statusCode = 200;
+        let caughtErr = null;
+        const res = {
+          status(code) { statusCode = code; return this; },
+          json() { return this; },
+        };
+
+        await deletePYQ(req, res, (err) => {
+          caughtErr = err;
+        });
+
+        assert.equal(statusCode, 403);
+        assert.match(caughtErr.message, /Not authorized/);
+        assert.equal(auditLogCalled, false);
+      });
+
+      it('should NOT create an AuditLog entry and return 404 if PYQ is not found or already deleted', async () => {
+        let auditLogCalled = false;
+        AuditLog.create = async () => {
+          auditLogCalled = true;
+        };
+
+        PYQ.findById = async () => null;
+
+        const req = {
+          params: { id: '507f1f77bcf86cd799439014' },
+          user: { _id: 'admin-123' },
+        };
+        let statusCode = 200;
+        let caughtErr = null;
+        const res = {
+          status(code) { statusCode = code; return this; },
+          json() { return this; },
+        };
+
+        await deletePYQ(req, res, (err) => {
+          caughtErr = err;
+        });
+
+        assert.equal(statusCode, 404);
+        assert.match(caughtErr.message, /PYQ not found/);
+        assert.equal(auditLogCalled, false);
+      });
+    });
+
+    describe('approvePYQ', () => {
+      it('should create an AuditLog entry with APPROVE action when admin approves a PYQ', async () => {
+        let createdAuditLog = null;
+        AuditLog.create = async (doc) => {
+          createdAuditLog = doc;
+          return doc;
+        };
+
+        const mockPYQ = {
+          _id: '507f1f77bcf86cd799439020',
+          title: 'KTU S6 Compiler Design 2023',
+          uploadedBy: 'student-firebase-1',
+          uploadedByRole: 'student',
+          status: 'pending',
+          save: async () => {},
+        };
+        PYQ.findById = async () => mockPYQ;
+
+        const req = {
+          params: { id: '507f1f77bcf86cd799439020' },
+          user: { _id: 'admin-user-id-999' },
+        };
+        let jsonResult = null;
+        const res = {
+          json(data) { jsonResult = data; return this; },
+        };
+
+        await approvePYQ(req, res, (err) => {
+          if (err) throw err;
+        });
+
+        assert.ok(createdAuditLog);
+        assert.equal(createdAuditLog.action, 'APPROVE');
+        assert.equal(createdAuditLog.resourceId, '507f1f77bcf86cd799439020');
+        assert.equal(createdAuditLog.resourceTitle, 'KTU S6 Compiler Design 2023');
+        assert.equal(createdAuditLog.performedBy, 'admin-user-id-999');
+        assert.equal(jsonResult.message, 'PYQ approved successfully');
+      });
+    });
+
+    describe('rejectPYQ', () => {
+      it('should create an AuditLog entry with REJECT action when admin rejects a PYQ', async () => {
+        let createdAuditLog = null;
+        AuditLog.create = async (doc) => {
+          createdAuditLog = doc;
+          return doc;
+        };
+
+        const mockPYQ = {
+          _id: '507f1f77bcf86cd799439030',
+          title: 'KTU S1 Calculus 2021',
+          uploadedBy: 'student-firebase-1',
+          uploadedByRole: 'student',
+          status: 'pending',
+          save: async () => {},
+        };
+        PYQ.findById = async () => mockPYQ;
+
+        const req = {
+          params: { id: '507f1f77bcf86cd799439030' },
+          user: { _id: 'admin-user-id-888' },
+        };
+        let jsonResult = null;
+        const res = {
+          json(data) { jsonResult = data; return this; },
+        };
+
+        await rejectPYQ(req, res, (err) => {
+          if (err) throw err;
+        });
+
+        assert.ok(createdAuditLog);
+        assert.equal(createdAuditLog.action, 'REJECT');
+        assert.equal(createdAuditLog.resourceId, '507f1f77bcf86cd799439030');
+        assert.equal(createdAuditLog.resourceTitle, 'KTU S1 Calculus 2021');
+        assert.equal(createdAuditLog.performedBy, 'admin-user-id-888');
+        assert.equal(jsonResult.message, 'PYQ rejected successfully');
+      });
     });
   });
 });
