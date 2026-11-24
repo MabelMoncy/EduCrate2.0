@@ -63,7 +63,7 @@ const verifyAdminCookie = async (req) => {
         return null;
     }
 
-    if (decoded.jti && tokenBlacklist.has(decoded.jti)) return null;
+    if (decoded.jti && (await tokenBlacklist.has(decoded.jti))) return null;
 
     const user = await User.findById(decoded.id).select('-password');
     if (!user || user.role !== 'admin') return null;
