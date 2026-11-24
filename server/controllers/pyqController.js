@@ -9,6 +9,7 @@ import {
   getFileObject,
 } from '../lib/storageService.js';
 import { clearCache } from '../lib/cache.js';
+import { stripHtml } from '../lib/sanitizer.js';
 
 const VALID_SEMESTERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'];
 
@@ -28,9 +29,23 @@ export const uploadPYQ = async (req, res, next) => {
       res.status(400);
       throw new Error('Please upload a PDF file');
     }
-    if (!title || !title.trim() || !semester || !subject || !year) {
+    if (
+      !title ||
+      typeof title !== 'string' ||
+      !title.trim() ||
+      !subject ||
+      typeof subject !== 'string' ||
+      !subject.trim() ||
+      !semester ||
+      !year
+    ) {
       res.status(400);
       throw new Error('Title, semester, subject, and year are required');
+    }
+    const parsedYear = parseInt(year, 10);
+    if (isNaN(parsedYear)) {
+      res.status(400);
+      throw new Error('Valid year is required');
     }
     if (!VALID_SEMESTERS.includes(semester)) {
       res.status(400);
@@ -60,6 +75,16 @@ export const uploadPYQ = async (req, res, next) => {
     const folder = `educrate/pyq/${semester}/${year}/${safeSubject}`;
     const publicId = `${Date.now()}_${safeName}`;
 
+    const cleanTitle = stripHtml(title.trim()).substring(0, 200);
+    const cleanDescription = typeof description === 'string' && description.trim()
+      ? stripHtml(description.trim()).substring(0, 1000)
+      : '';
+
+    if (!cleanTitle.trim()) {
+      res.status(400);
+      throw new Error('Title is required');
+    }
+
     let b2;
     try {
       b2 = await uploadPdfWithThumbnail(file.buffer, folder, publicId);
@@ -75,11 +100,11 @@ export const uploadPYQ = async (req, res, next) => {
     const status = isAdmin ? 'published' : 'pending';
 
     const pyq = await PYQ.create({
-      title: title.trim().substring(0, 200),
-      description: description ? description.trim().substring(0, 1000) : '',
+      title: cleanTitle,
+      description: cleanDescription,
       semester,
       subject,
-      year: parseInt(year, 10),
+      year: parsedYear,
       storageKey: b2.storageKey,
       thumbnailKey: b2.thumbnailKey,
       thumbnailUrl: b2.thumbnailUrl,
@@ -291,13 +316,19 @@ export const approvePYQ = async (req, res, next) => {
     await pyq.save();
 
     if (pyq.uploadedByRole === 'student') {
-      await Notification.create({
-        studentFirebaseUid: pyq.uploadedBy,
-        type: 'approved',
-        contentType: 'pyq',
-        contentId: pyq._id,
-        contentTitle: pyq.title,
-      });
+      try {
+        const rawCleanTitle = stripHtml(pyq.title).trim().substring(0, 200);
+        const contentTitle = rawCleanTitle || (pyq.subject ? `${pyq.subject} PYQ` : 'Untitled PYQ');
+        await Notification.create({
+          studentFirebaseUid: pyq.uploadedBy,
+          type: 'approved',
+          contentType: 'pyq',
+          contentId: pyq._id,
+          contentTitle,
+        });
+      } catch (notifErr) {
+        console.error('[pyqController] Failed to dispatch approval notification:', notifErr);
+      }
     }
 
     clearCache('/pyq');
@@ -322,13 +353,19 @@ export const rejectPYQ = async (req, res, next) => {
     await pyq.save();
 
     if (pyq.uploadedByRole === 'student') {
-      await Notification.create({
-        studentFirebaseUid: pyq.uploadedBy,
-        type: 'rejected',
-        contentType: 'pyq',
-        contentId: pyq._id,
-        contentTitle: pyq.title,
-      });
+      try {
+        const rawCleanTitle = stripHtml(pyq.title).trim().substring(0, 200);
+        const contentTitle = rawCleanTitle || (pyq.subject ? `${pyq.subject} PYQ` : 'Untitled PYQ');
+        await Notification.create({
+          studentFirebaseUid: pyq.uploadedBy,
+          type: 'rejected',
+          contentType: 'pyq',
+          contentId: pyq._id,
+          contentTitle,
+        });
+      } catch (notifErr) {
+        console.error('[pyqController] Failed to dispatch rejection notification:', notifErr);
+      }
     }
 
     res.json({ message: 'PYQ rejected successfully' });

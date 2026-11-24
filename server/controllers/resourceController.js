@@ -14,6 +14,7 @@ import {
 const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse');
 import { clearCache } from '../lib/cache.js';
+import { stripHtml } from '../lib/sanitizer.js';
 
 // ── Allowlist constants (mirrors client/src/lib/semesterData.js) ──────────────
 const VALID_SEMESTERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'];
@@ -163,23 +164,6 @@ const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const SEARCH_MAX_LENGTH = 200; // M13 — prevent catastrophic-backtracking regex via long inputs
 const LIMIT_MAX = 100;         // M14 — prevent full-table dumps via ?limit=1000000
 
-/**
- * Strips all HTML tags from a string to prevent stored XSS payloads (M16).
- * React escapes by default, but sanitising at rest is defence-in-depth.
- * Uses iterative sanitization to handle nested or malformed tags (CodeQL fix).
- */
-const stripHtml = (str) => {
-  if (typeof str !== 'string') return '';
-  let sanitized = str.substring(0, 2000);
-  let prev;
-  let passes = 0;
-  do {
-    prev = sanitized;
-    sanitized = sanitized.replace(/<[^><]*>/g, '');
-    passes++;
-  } while (sanitized !== prev && passes < 10);
-  return sanitized;
-};
 
 const buildResourceQuery = ({ semester, isPinned, subject, type, search } = {}) => {
   const query = {};
