@@ -15,8 +15,8 @@
  */
 export const csrfMiddleware = (req, res, next) => {
     const STATE_CHANGING_METHODS = ['POST', 'PATCH', 'PUT', 'DELETE'];
-    // Login route has no session yet — exempt from CSRF check
-    const CSRF_EXEMPT_PATHS = ['/api/auth/login'];
+    // Login route and public feedback submission are exempt from CSRF check
+    const CSRF_EXEMPT_PATHS = ['/api/auth/login', '/api/feedback'];
     const authHeader = req.headers.authorization || '';
 
     if (!STATE_CHANGING_METHODS.includes(req.method)) {

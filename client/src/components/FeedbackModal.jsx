@@ -5,8 +5,6 @@ import {
   Lightbulb, Wrench, Bug, HelpCircle,
 } from 'lucide-react';
 
-const WEB3FORMS_KEY = import.meta.env.VITE_WEB3FORMS_KEY;
-
 const CATEGORIES = [
   { value: 'feature', label: 'Suggest a new feature',     Icon: Lightbulb },
   { value: 'improve', label: 'Improve an existing feature', Icon: Wrench   },
@@ -115,30 +113,27 @@ export default function FeedbackModal({ isOpen, onClose }) {
     if (!message.trim() || status === 'loading') return;
     setStatus('loading'); setErrorMsg('');
 
-    const catLabel = CATEGORIES.find(c => c.value === category)?.label ?? 'General';
     const payload  = {
-      access_key: WEB3FORMS_KEY,
-      subject:    `[EduCrate Feedback] ${catLabel}`,
-      name:       name.trim()  || 'Anonymous',
-      email:      email.trim() || 'no-reply@educrate.app',
-      message:    message.trim(),
-      botcheck:   '',
+      name:     name.trim()  || 'Anonymous',
+      email:    email.trim() || 'no-reply@educrate.app',
+      category: category     || 'other',
+      message:  message.trim(),
     };
 
     try {
-      const res  = await fetch('https://api.web3forms.com/submit', {
+      const res  = await fetch('/api/feedback', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body:    JSON.stringify(payload),
       });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         setStatus('success');
         setTimeout(handleClose, 3000);
       } else {
-        if (import.meta.env.DEV) console.error('[FeedbackModal] Web3Forms error:', data.message);
+        if (import.meta.env.DEV) console.error('[FeedbackModal] Feedback error:', data.message);
         setStatus('error');
-        setErrorMsg('Something went wrong. Please try again later.');
+        setErrorMsg(data.message || 'Something went wrong. Please try again later.');
       }
     } catch {
       setStatus('error');

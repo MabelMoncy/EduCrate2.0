@@ -50,6 +50,23 @@ describe('csrfMiddleware', () => {
     assert.equal(nextError, undefined, 'No error should be passed for exempt path');
   });
 
+  it('should skip CSRF check for POST /api/feedback (exempt path)', () => {
+    const req = {
+      method: 'POST',
+      path: '/api/feedback',
+      headers: {},
+      cookies: {},
+    };
+    const res = mockRes();
+    let nextCalled = false;
+    let nextError = null;
+
+    csrfMiddleware(req, res, (err) => { nextCalled = true; nextError = err; });
+
+    assert.ok(nextCalled, 'next() must be called');
+    assert.equal(nextError, undefined, 'No error should be passed for exempt path');
+  });
+
   // ── Firebase Bearer token requests are exempt ────────────────────────────
 
   it('should skip CSRF check for requests with Authorization: Bearer header', () => {
