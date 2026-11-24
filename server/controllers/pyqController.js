@@ -9,6 +9,7 @@ import {
   getFileObject,
 } from '../lib/storageService.js';
 import { clearCache } from '../lib/cache.js';
+import { stripHtml } from '../lib/sanitizer.js';
 
 const VALID_SEMESTERS = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'];
 
@@ -60,6 +61,14 @@ export const uploadPYQ = async (req, res, next) => {
     const folder = `educrate/pyq/${semester}/${year}/${safeSubject}`;
     const publicId = `${Date.now()}_${safeName}`;
 
+    const cleanTitle = stripHtml(title.trim()).substring(0, 200);
+    const cleanDescription = description ? stripHtml(description.trim()).substring(0, 1000) : '';
+
+    if (!cleanTitle.trim()) {
+      res.status(400);
+      throw new Error('Title is required');
+    }
+
     let b2;
     try {
       b2 = await uploadPdfWithThumbnail(file.buffer, folder, publicId);
@@ -75,8 +84,8 @@ export const uploadPYQ = async (req, res, next) => {
     const status = isAdmin ? 'published' : 'pending';
 
     const pyq = await PYQ.create({
-      title: title.trim().substring(0, 200),
-      description: description ? description.trim().substring(0, 1000) : '',
+      title: cleanTitle,
+      description: cleanDescription,
       semester,
       subject,
       year: parseInt(year, 10),
@@ -296,7 +305,7 @@ export const approvePYQ = async (req, res, next) => {
         type: 'approved',
         contentType: 'pyq',
         contentId: pyq._id,
-        contentTitle: pyq.title,
+        contentTitle: stripHtml(pyq.title).substring(0, 200),
       });
     }
 
@@ -327,7 +336,7 @@ export const rejectPYQ = async (req, res, next) => {
         type: 'rejected',
         contentType: 'pyq',
         contentId: pyq._id,
-        contentTitle: pyq.title,
+        contentTitle: stripHtml(pyq.title).substring(0, 200),
       });
     }
 
