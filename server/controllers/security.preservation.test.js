@@ -466,6 +466,11 @@ test('3.11 — mongoSanitize: express-mongo-sanitize is applied as middleware in
         sanitizeIdx < routeIdx,
         'mongoSanitize middleware must be registered BEFORE the /api routes are mounted'
     );
+
+    assert.ok(
+        serverSource.includes('sanitizeQueryObject(req.query)'),
+        'mongoSanitize middleware must sanitize req.query for operator injection attempts'
+    );
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

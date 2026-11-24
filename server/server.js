@@ -101,10 +101,23 @@ app.use(
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true }));
 
+const sanitizeQueryObject = (query) => {
+  if (!query || typeof query !== 'object' || Array.isArray(query)) return {};
+
+  const clonedQuery = structuredClone(query);
+  const sanitizedQuery = expressMongoSanitize.sanitize(clonedQuery, { allowDots: false }) || {};
+
+  // req.query is exposed via a getter in Express 5, so mutate the returned object instead of reassigning it
+  Object.keys(query).forEach((key) => delete query[key]);
+  Object.assign(query, sanitizedQuery);
+  return query;
+};
+
 // Prevent NoSQL injection — custom wrapper for Express 5 compatibility (req.query is a read-only getter in Express 5)
 const mongoSanitize = () => (req, _res, next) => {
   if (req.body) expressMongoSanitize.sanitize(req.body, { allowDots: false });
   if (req.params) expressMongoSanitize.sanitize(req.params, { allowDots: false });
+  if (req.query) sanitizeQueryObject(req.query);
   next();
 };
 app.use(mongoSanitize());

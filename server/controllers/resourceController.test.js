@@ -11,7 +11,7 @@ test('buildResourceQuery applies exact filters', () => {
   });
 
   assert.equal(query.semester, 'S4');
-  assert.equal(query.subject, 'Operating Systems');
+  assert.deepEqual(query.subject, { $eq: 'Operating Systems' });
   assert.equal(query.type, 'notes');
   assert.equal(query.isPinned, true);
 });
@@ -23,4 +23,14 @@ test('buildResourceQuery escapes search regex input', () => {
   assert.equal(query.$or.length, 5);
   assert.match('OS (unit 1). notes', query.$or[0].title);
   assert.doesNotMatch('OS unit 1x notes', query.$or[0].title);
+});
+
+test('buildResourceQuery ignores non-string query operator objects', () => {
+  const query = buildResourceQuery({
+    subject: { $ne: null },
+    search: { $regex: '.*' },
+  });
+
+  assert.equal(query.subject, undefined);
+  assert.equal(query.$or, undefined);
 });
