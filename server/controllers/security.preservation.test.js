@@ -445,6 +445,10 @@ test('3.11 — mongoSanitize: express-mongo-sanitize is applied as middleware in
         path.join(SERVER_ROOT, 'server.js'),
         'utf8'
     );
+    const middlewareSource = readFileSync(
+        path.join(SERVER_ROOT, 'middlewares', 'mongoSanitizeMiddleware.js'),
+        'utf8'
+    );
 
     // mongoSanitize must be imported
     assert.ok(
@@ -468,7 +472,8 @@ test('3.11 — mongoSanitize: express-mongo-sanitize is applied as middleware in
     );
 
     assert.ok(
-        serverSource.includes('sanitizeQueryObject(req.query)'),
+        middlewareSource.includes('sanitizeQueryObject(req.query)') &&
+        middlewareSource.includes("Object.defineProperty(req, 'query'"),
         'mongoSanitize middleware must sanitize req.query for operator injection attempts'
     );
 });
