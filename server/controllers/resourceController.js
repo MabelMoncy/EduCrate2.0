@@ -610,15 +610,39 @@ const getMyUploads = async (req, res, next) => {
 const getThumbnail = async (req, res, next) => {
   try {
     const key = req.query.key;
-    if (!key || typeof key !== 'string' || !key.startsWith('educrate/') || !key.endsWith('.webp')) {
+
+    // Strict validation: must be a string, no directory traversal, and match
+    // the exact storage path pattern  educrate/<path segments>/<file>.webp
+    if (
+      !key ||
+      typeof key !== 'string' ||
+      key.includes('..') ||
+      !/^educrate\/[a-zA-Z0-9_\-/]+\.webp$/.test(key)
+    ) {
       res.status(400);
       throw new Error('Invalid thumbnail key');
     }
 
     const { stream, contentType } = await getThumbnailObject(key);
+
+    // Client may have disconnected while we fetched from storage
+    if (res.destroyed || res.writableEnded) {
+      if (typeof stream?.destroy === 'function') stream.destroy();
+      return;
+    }
+
     res.setHeader('Content-Type', contentType);
     res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
-    stream.pipe(res);
+
+    pipeline(stream, res, (err) => {
+      if (err) {
+        if (!res.headersSent) {
+          next(err);
+        } else {
+          res.destroy();
+        }
+      }
+    });
   } catch (error) {
     if (error.name === 'NoSuchKey' || error.$metadata?.httpStatusCode === 404) {
       return res.status(404).json({ message: 'Thumbnail not found' });
