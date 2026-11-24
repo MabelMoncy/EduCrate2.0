@@ -19,6 +19,7 @@ import { cacheMiddleware } from '../lib/cache.js';
 import { uploadPYQ, listPYQs, deletePYQ, getPYQViewUrl, streamPYQFile, getPendingPYQs, getMyPYQUploads, approvePYQ, rejectPYQ } from '../controllers/pyqController.js';
 import { getMyNotifications, markNotificationRead } from '../controllers/notificationController.js';
 import { triggerCleanup } from '../controllers/cronController.js';
+import { submitFeedback } from '../controllers/feedbackController.js';
 
 const router = express.Router();
 
@@ -56,8 +57,17 @@ const uploadRateLimit = rateLimit({
   legacyHeaders: false,
 });
 
+const feedbackLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5,                    // 5 feedback submissions per 15 min per IP
+  message: 'Too many feedback submissions. Please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 router.post('/auth/login', loginLimiter, loginAdmin);
 router.post('/auth/logout', logoutAdmin);
+router.post('/feedback', feedbackLimiter, submitFeedback);
 
 const resourcesCache = cacheMiddleware(300);
 
